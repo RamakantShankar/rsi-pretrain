@@ -1,0 +1,34 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Model Checkpoints, Shards, Weights (never push multi-GB files to git)
+checkpoints/
+data/cache/
+data/shards/
+*.bin
+*.pt
+*.pth
+*.safetensors
+*.npy
+
+# Experiment tracking & logs
+wandb/
+runs/
+logs/
+*.log
+
+# OS & Editor
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
