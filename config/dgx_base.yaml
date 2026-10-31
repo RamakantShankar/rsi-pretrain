@@ -1,0 +1,33 @@
+# DGX Grace Blackwell (GB10) Production Pretraining Configuration
+experiment_name: "dgx_base_coding_llm"
+
+# Model Architecture (Llama-style 130M+ foundation model)
+model:
+  vocab_size: 100262
+  dim: 768
+  n_layers: 12
+  n_heads: 12
+  n_kv_heads: 4         # Grouped-Query Attention (3:1 query:KV ratio)
+  max_seq_len: 2048     # Full 2k token packed context window
+  rope_theta: 500000.0  # Extended context capability
+  tie_embeddings: false # Untied embeddings for higher capacity
+  dropout: 0.0
+
+# Training Hyperparameters for DGX GPU
+training:
+  batch_size: 16
+  grad_accum_steps: 4   # Effective global batch size = 64 * 2048 = 131,072 tokens/step
+  learning_rate: 6.0e-4
+  weight_decay: 0.1
+  scheduler_type: "wsd" # Warmup-Stable-Decay
+  warmup_steps: 500
+  total_steps: 20000    # ~2.6 Billion tokens
+  max_grad_norm: 1.0
+  dtype: "bfloat16"     # Native Blackwell tensor core acceleration
+  log_interval: 10
+  eval_interval: 500
+
+# Data
+data:
+  train_shards: "data/shards/train_shard_*.bin"
+  val_split: 0.05

@@ -1,0 +1,33 @@
+# Micro Model Config for Local Rapid Testing / Sanity Runs
+experiment_name: "micro_sanity_run"
+
+# Model Architecture
+model:
+  vocab_size: 100262
+  dim: 192
+  n_layers: 4
+  n_heads: 6
+  n_kv_heads: 2
+  max_seq_len: 256
+  rope_theta: 10000.0
+  tie_embeddings: true
+  dropout: 0.0
+
+# Training Hyperparameters
+training:
+  batch_size: 4
+  grad_accum_steps: 2
+  learning_rate: 1.0e-3
+  weight_decay: 0.1
+  scheduler_type: "wsd"
+  warmup_steps: 20
+  total_steps: 80
+  max_grad_norm: 1.0
+  dtype: "float32"
+  log_interval: 10
+  eval_interval: 40
+
+# Data
+data:
+  train_shards: "data/test_shards/shard_*.bin"
+  val_split: 0.1
