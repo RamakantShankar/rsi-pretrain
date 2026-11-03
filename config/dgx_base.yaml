@@ -1,7 +1,7 @@
 # DGX Grace Blackwell (GB10) Production Pretraining Configuration
-experiment_name: "dgx_base_coding_llm"
+experiment_name: "152m_wsd_10m_baseline"
 
-# Model Architecture (~150M parameter coding foundation model)
+# Model Architecture (~152.5M parameter coding foundation model)
 model:
   vocab_size: 100262
   dim: 768
@@ -10,7 +10,7 @@ model:
   n_kv_heads: 4         # Grouped-Query Attention (3:1 query:KV ratio)
   max_seq_len: 2048     # Full 2k token packed context window
   rope_theta: 500000.0  # Extended context capability
-  tie_embeddings: false # Untied embeddings for higher capacity
+  tie_embeddings: true  # Tied embeddings for balanced ~152.5M capacity
   dropout: 0.0
 
 # Training Hyperparameters for DGX GPU
@@ -27,7 +27,7 @@ training:
   log_interval: 10
   eval_interval: 100
   wandb: true
-  wandb_project: "rsi-coding-foundation"
+  wandb_project: "rsi-coding-pretrain"
 
 # Data
 data:
