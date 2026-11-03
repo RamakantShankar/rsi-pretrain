@@ -34,5 +34,10 @@ This repository follows a strict, student-first teaching methodology. All lesson
 * Immediately follow the paper calculation with real, modular PyTorch code from our actual `src/` codebase.
 * Show the model executing on the exact same numbers, proving that the Python implementation matches the student's handwritten math to the exact decimal point.
 
+### 6. Proactive Blindspots & Traps ("What You Haven't Asked")
+* **Never wait for the student to encounter a disaster.**
+* For every topic, architecture choice, and training phase, **proactively surface the unasked questions, hidden traps, silent failure modes, and production gotchas** that practitioners usually only discover the hard way (e.g. SIGHUP terminal disconnections, Step-0 $\ln(V)$ checks, AdamW momentum loss on checkpoint restarts, softmax FP32 underflows).
+* Break down the exact mathematical and physical reasons behind these gotchas.
+
 ---
 *Created and adhered to for the RSI Pretraining Tutorial.*
