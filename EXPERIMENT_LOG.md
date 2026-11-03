@@ -35,7 +35,7 @@
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **`micro_local_smoke`** | 20.8M (d=256, L=6, H=4, KV=2) | Synthetic (50k) | WSD (50 steps) | 0.4814 | N/A | N/A | ✅ **Passed.** Baseline CPU smoke test verified convergence and gradient backprop. |
 | **`ablation_gqa_vs_mha`** | 20.8M (KV=2 vs KV=6) | Synthetic (50k) | WSD (40 steps) | 0.4901 (GQA)<br>0.4907 (MHA) | N/A | N/A | ✅ **Passed.** Proved GQA matches full MHA loss within 0.0006 while cutting KV cache by 66%. |
-| **`152m_wsd_10m_baseline`** | 152.5M (d=768, L=12, H=12, KV=4, Tied) | `codeparrot-clean` (10M) | WSD (500 steps) | *Pending* | *Pending* | *Pending* | ⏳ **Queued.** First Blackwell GB10 production run on real Python code. |
+| **`152m_wsd_10m_baseline`** | 152.5M (d=768, L=12, H=12, KV=4, Tied) | `codeparrot-clean` (10M) | WSD (500 steps) | 3.1844 | 3.4435 | 31.29 | ✅ **Completed.** First DGX Blackwell GB10 run. Val loss dropped from 11.29 to 3.44; PPL reached 31.3. WSD cooling decay verified. |
 
 ---
 
