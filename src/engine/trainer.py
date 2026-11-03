@@ -45,7 +45,9 @@ class Trainer:
         self.log_file = os.path.join(self.save_dir, "metrics.jsonl")
 
         # Determine precision dtype
-        if self.device == "cuda":
+        is_cuda = "cuda" in str(self.device)
+        self.device_type = "cuda" if is_cuda else "cpu"
+        if is_cuda:
             torch.backends.cuda.matmul.allow_tf32 = True
             torch.backends.cudnn.allow_tf32 = True
             self.autocast_dtype = torch.bfloat16 if dtype == "bfloat16" else torch.float16
@@ -85,7 +87,7 @@ class Trainer:
             if i >= num_batches:
                 break
             x, y = x.to(self.device), y.to(self.device)
-            with torch.autocast(device_type=self.device, dtype=self.autocast_dtype, enabled=(self.device == "cuda")):
+            with torch.autocast(device_type=self.device_type, dtype=self.autocast_dtype, enabled=(self.device_type == "cuda")):
                 _, loss = self.model(x, y)
             total_loss += loss.item()
             batches += 1
@@ -118,7 +120,7 @@ class Trainer:
                 x, y = x.to(self.device), y.to(self.device)
                 tokens_processed += x.numel()
 
-                with torch.autocast(device_type=self.device, dtype=self.autocast_dtype, enabled=(self.device == "cuda")):
+                with torch.autocast(device_type=self.device_type, dtype=self.autocast_dtype, enabled=(self.device_type == "cuda")):
                     _, loss = self.model(x, y)
                     loss = loss / self.grad_accum_steps
 
