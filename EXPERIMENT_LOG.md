@@ -12,8 +12,20 @@
 | **GPU Architecture** | NVIDIA GB10 (Grace Blackwell, Compute Capability 12.1) |
 | **Host Processor** | 20-Core ARM Cortex-X925 / A725 with 121 GB unified RAM |
 | **Precision** | Native Tensor Core `bfloat16` |
-| **Live Telemetry** | Weights & Biases (`ramakant_shankar / rsi-coding-pretrain`) + Local `metrics.jsonl` |
-| **Git Repository** | `https://github.com/RamakantShankar/rsi-pretrain` |
+| **Live Telemetry** | [Weights & Biases Dashboard](https://wandb.ai/ramakant_shankar/rsi-coding-pretrain) + Local `metrics.jsonl` |
+| **Git Repository** | [GitHub: rsi-pretrain](https://github.com/RamakantShankar/rsi-pretrain) |
+
+---
+
+## 📈 Visual Architecture & Learning Curves
+
+* **Live Dashboard URL:** [https://wandb.ai/ramakant_shankar/rsi-coding-pretrain](https://wandb.ai/ramakant_shankar/rsi-coding-pretrain)
+* **WSD vs. Cosine Schedule:** [lr_schedules.png](file:///M:/Rama/Study/llm/LLM/RSI/notebooks/assets/lr_schedules.png)
+* **Catastrophic Restart Spikes:** [lr_restart_spike.png](file:///M:/Rama/Study/llm/LLM/RSI/notebooks/assets/lr_restart_spike.png)
+* **AdamW Parameter Splitting:** [optimizer_split.png](file:///M:/Rama/Study/llm/LLM/RSI/notebooks/assets/optimizer_split.png)
+* **Gradient Clipping Norm:** [grad_clipping.png](file:///M:/Rama/Study/llm/LLM/RSI/notebooks/assets/grad_clipping.png)
+* **Chinchilla Scaling Laws:** [scaling_laws.png](file:///M:/Rama/Study/llm/LLM/RSI/notebooks/assets/scaling_laws.png)
+* **RSI Agent State Machine:** [rsi_agent_loop.png](file:///M:/Rama/Study/llm/LLM/RSI/notebooks/assets/rsi_agent_loop.png)
 
 ---
 
