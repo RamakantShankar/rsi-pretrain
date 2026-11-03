@@ -19,6 +19,8 @@ from src.engine.trainer import Trainer
 def parse_args():
     parser = argparse.ArgumentParser(description="Pretrain LLM from Scratch")
     parser.add_argument("--config", type=str, default="config/micro_local.yaml", help="Path to config YAML")
+    parser.add_argument("--wandb", action="store_true", help="Enable Weights & Biases telemetry")
+    parser.add_argument("--project", type=str, default="rsi-coding-foundation", help="W&B project name")
     return parser.parse_args()
 
 
@@ -73,6 +75,10 @@ def main():
     non_emb_params = model.get_num_params(non_embedding=True)
     print(f"Transformer Initialized: {total_params:,} total parameters ({non_emb_params:,} non-embedding)")
 
+    # Determine W&B flag (CLI flag or YAML config)
+    use_wandb = args.wandb or cfg.get("training", {}).get("wandb", False)
+    wandb_project = cfg.get("training", {}).get("wandb_project", args.project)
+
     # 4. Start Trainer
     trainer = Trainer(
         model=model,
@@ -89,6 +95,8 @@ def main():
         log_interval=int(cfg["training"]["log_interval"]),
         eval_interval=int(cfg["training"]["eval_interval"]),
         experiment_name=cfg.get("experiment_name", "run_01"),
+        use_wandb=use_wandb,
+        wandb_project=wandb_project,
     )
 
     trainer.train()

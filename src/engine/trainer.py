@@ -30,6 +30,8 @@ class Trainer:
         eval_interval: int = 100,
         save_dir: str = "checkpoints",
         experiment_name: str = "run_01",
+        use_wandb: bool = False,
+        wandb_project: str = "rsi-coding-foundation",
     ):
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.model = model.to(self.device)
@@ -70,9 +72,41 @@ class Trainer:
         self.step = 0
         self.best_val_loss = float("inf")
 
+        # Weights & Biases Dual-Logging
+        self.use_wandb = use_wandb
+        if self.use_wandb:
+            try:
+                import wandb
+                model_cfg = getattr(self.model, "config", {})
+                wandb.init(
+                    project=wandb_project,
+                    name=experiment_name,
+                    config={
+                        "learning_rate": learning_rate,
+                        "weight_decay": weight_decay,
+                        "scheduler_type": scheduler_type,
+                        "warmup_steps": warmup_steps,
+                        "total_steps": total_steps,
+                        "grad_accum_steps": grad_accum_steps,
+                        "dtype": dtype,
+                        "model": model_cfg.__dict__ if hasattr(model_cfg, "__dict__") else str(model_cfg),
+                    },
+                )
+                print(f"--> [Weights & Biases] Connected! Live Run Dashboard: {wandb.run.url}")
+            except Exception as e:
+                print(f"[WARNING] Weights & Biases connection failed: {e}. Falling back to local logging only.")
+                self.use_wandb = False
+
     def _log_metric(self, metrics: Dict[str, Any]):
         with open(self.log_file, "a") as f:
             f.write(json.dumps(metrics) + "\n")
+        
+        if self.use_wandb:
+            try:
+                import wandb
+                wandb.log(metrics, step=metrics.get("step", self.step))
+            except Exception:
+                pass
 
     @torch.no_grad()
     def evaluate(self, num_batches: int = 20) -> float:
@@ -182,3 +216,9 @@ class Trainer:
                     print(f"--> [Checkpoint] Saved model checkpoint to {ckpt_path}")
 
         print(f"\nTraining completed! All logs written to {self.log_file}")
+        if self.use_wandb:
+            try:
+                import wandb
+                wandb.finish()
+            except Exception:
+                pass

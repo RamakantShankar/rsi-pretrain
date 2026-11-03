@@ -26,6 +26,8 @@ training:
   dtype: "bfloat16"     # Native Blackwell tensor core acceleration
   log_interval: 10
   eval_interval: 100
+  wandb: true
+  wandb_project: "rsi-coding-foundation"
 
 # Data
 data:
