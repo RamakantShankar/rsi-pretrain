@@ -178,10 +178,11 @@ class Trainer:
                 elapsed = time.time() - start_time
                 tok_per_sec = tokens_processed / max(1e-5, elapsed)
                 current_lr = self.scheduler.get_last_lr()[0]
+                avg_train_loss = accum_loss / self.log_interval
                 
                 log_data = {
                     "step": self.step,
-                    "train_loss": round(accum_loss, 4),
+                    "train_loss": round(avg_train_loss, 4),
                     "grad_norm": round(float(grad_norm), 4),
                     "lr": float(f"{current_lr:.6e}"),
                     "tokens_per_sec": int(tok_per_sec),
