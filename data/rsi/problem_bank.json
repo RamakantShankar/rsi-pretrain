@@ -1,5 +1,131 @@
 [
   {
+    "task_id": "tier1_01",
+    "category": "elementary",
+    "name": "add_two_numbers",
+    "prompt": "def add(a: int, b: int) -> int:\n    \"\"\"Return the sum of a and b.\"\"\"\n",
+    "canonical": "    return a + b",
+    "tests": [
+      "assert add(2, 3) == 5",
+      "assert add(-1, 1) == 0",
+      "assert add(0, 0) == 0",
+      "assert add(-5, -5) == -10"
+    ]
+  },
+  {
+    "task_id": "tier1_02",
+    "category": "elementary",
+    "name": "subtract_two_numbers",
+    "prompt": "def subtract(a: int, b: int) -> int:\n    \"\"\"Return the difference of a and b (a - b).\"\"\"\n",
+    "canonical": "    return a - b",
+    "tests": [
+      "assert subtract(5, 3) == 2",
+      "assert subtract(3, 5) == -2",
+      "assert subtract(0, 0) == 0"
+    ]
+  },
+  {
+    "task_id": "tier1_03",
+    "category": "elementary",
+    "name": "multiply_two_numbers",
+    "prompt": "def multiply(a: int, b: int) -> int:\n    \"\"\"Return the product of a and b.\"\"\"\n",
+    "canonical": "    return a * b",
+    "tests": [
+      "assert multiply(3, 4) == 12",
+      "assert multiply(-2, 3) == -6",
+      "assert multiply(0, 100) == 0",
+      "assert multiply(-3, -3) == 9"
+    ]
+  },
+  {
+    "task_id": "tier1_04",
+    "category": "elementary",
+    "name": "is_positive",
+    "prompt": "def is_positive(x: int) -> bool:\n    \"\"\"Return True if x is strictly positive (> 0), else False.\"\"\"\n",
+    "canonical": "    return x > 0",
+    "tests": [
+      "assert is_positive(5) == True",
+      "assert is_positive(0) == False",
+      "assert is_positive(-3) == False",
+      "assert is_positive(1) == True"
+    ]
+  },
+  {
+    "task_id": "tier1_05",
+    "category": "elementary",
+    "name": "is_even",
+    "prompt": "def is_even(n: int) -> bool:\n    \"\"\"Return True if n is an even integer.\"\"\"\n",
+    "canonical": "    return n % 2 == 0",
+    "tests": [
+      "assert is_even(4) == True",
+      "assert is_even(7) == False",
+      "assert is_even(0) == True",
+      "assert is_even(-2) == True",
+      "assert is_even(-3) == False"
+    ]
+  },
+  {
+    "task_id": "tier1_06",
+    "category": "elementary",
+    "name": "square_number",
+    "prompt": "def square(n: int) -> int:\n    \"\"\"Return the square of n (n * n).\"\"\"\n",
+    "canonical": "    return n * n",
+    "tests": [
+      "assert square(3) == 9",
+      "assert square(-4) == 16",
+      "assert square(0) == 0",
+      "assert square(1) == 1"
+    ]
+  },
+  {
+    "task_id": "tier1_07",
+    "category": "elementary",
+    "name": "string_length",
+    "prompt": "def string_length(s: str) -> int:\n    \"\"\"Return the length of the string.\"\"\"\n",
+    "canonical": "    return len(s)",
+    "tests": [
+      "assert string_length('hello') == 5",
+      "assert string_length('') == 0",
+      "assert string_length('a') == 1",
+      "assert string_length('python code') == 11"
+    ]
+  },
+  {
+    "task_id": "tier1_08",
+    "category": "elementary",
+    "name": "get_first_element",
+    "prompt": "def get_first(items: list):\n    \"\"\"Return the first element of a non-empty list.\"\"\"\n",
+    "canonical": "    return items[0]",
+    "tests": [
+      "assert get_first([1, 2, 3]) == 1",
+      "assert get_first(['a', 'b']) == 'a'",
+      "assert get_first([[1, 2]]) == [1, 2]"
+    ]
+  },
+  {
+    "task_id": "tier1_09",
+    "category": "elementary",
+    "name": "get_last_element",
+    "prompt": "def get_last(items: list):\n    \"\"\"Return the last element of a non-empty list.\"\"\"\n",
+    "canonical": "    return items[-1]",
+    "tests": [
+      "assert get_last([1, 2, 3]) == 3",
+      "assert get_last(['z']) == 'z'",
+      "assert get_last([10, 20, 30, 40]) == 40"
+    ]
+  },
+  {
+    "task_id": "tier1_10",
+    "category": "elementary",
+    "name": "negate_boolean",
+    "prompt": "def negate(b: bool) -> bool:\n    \"\"\"Return the logical negation of b.\"\"\"\n",
+    "canonical": "    return not b",
+    "tests": [
+      "assert negate(True) == False",
+      "assert negate(False) == True"
+    ]
+  },
+  {
     "task_id": "str_01",
     "category": "strings",
     "name": "reverse_string",

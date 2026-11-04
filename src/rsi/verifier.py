@@ -21,6 +21,30 @@ class VerificationResult:
     execution_time_sec: float = 0.0
 
 
+def extract_function_block(code: str) -> str:
+    """
+    Extracts only the target function implementation, stopping at the first
+    unindented statement after the header. Standard practice in HumanEval evaluation.
+    """
+    lines = code.splitlines()
+    if not lines:
+        return code
+    result = []
+    found_header = False
+    for line in lines:
+        if not found_header:
+            if line.strip().startswith("def ") or line.strip().startswith("class "):
+                found_header = True
+            result.append(line)
+        else:
+            if line.startswith(" ") or line.startswith("\t") or not line.strip() or line.strip().startswith("#"):
+                result.append(line)
+            else:
+                # Stop at the next unindented function or statement
+                break
+    return "\n".join(result)
+
+
 class CodeVerifier:
     def __init__(self, timeout_sec: float = 2.0):
         self.timeout_sec = timeout_sec
@@ -29,7 +53,8 @@ class CodeVerifier:
         """
         Executes code_solution + unit_tests in a temporary sandboxed Python subprocess.
         """
-        full_code = code_solution.rstrip() + "\n\n" + "\n".join(unit_tests) + "\n"
+        cleaned_code = extract_function_block(code_solution)
+        full_code = cleaned_code.rstrip() + "\n\n" + "\n".join(unit_tests) + "\n"
 
         with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False, encoding="utf-8") as f:
             f.write(full_code)
@@ -128,8 +153,8 @@ if __name__ == "__main__":
 
     # 4. Test Infinite Loop Timeout
     res4 = verifier.verify(
-        "def loop():\n    while True:\n        pass\nloop()",
-        ["assert True"]
+        "def loop():\n    while True:\n        pass",
+        ["loop()"]
     )
     print(f"4. Infinite Loop:       Passed={res4.passed} | Error={res4.error_type} | Msg={res4.error_msg}")
     assert not res4.passed and res4.error_type == "TIMEOUT"
