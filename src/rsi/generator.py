@@ -89,6 +89,22 @@ class SelfPlayEngine:
                 # Verify completion with sandboxed unit tests
                 res = self.verifier.verify(completion, tests)
 
+                # 1. ALWAYS record every attempt to all_candidates.jsonl for complete transparency
+                all_candidates_path = "data/rsi/all_candidates.jsonl"
+                attempt_record = {
+                    "task_id": task_id,
+                    "name": name,
+                    "candidate_idx": k + 1,
+                    "passed": res.passed,
+                    "error_type": res.error_type,
+                    "error_msg": res.error_msg,
+                    "exec_time": round(res.execution_time_sec, 3),
+                    "prompt": prompt,
+                    "completion": completion,
+                }
+                with open(all_candidates_path, "a", encoding="utf-8") as f:
+                    f.write(json.dumps(attempt_record) + "\n")
+
                 if res.passed:
                     print(f"   Candidate #{k+1}: ✅ PASSED ({res.execution_time_sec:.3f}s)")
                     if not passed_any_for_this_problem:
@@ -97,7 +113,7 @@ class SelfPlayEngine:
                     if k == 0:
                         first_attempt_passes += 1
 
-                    # Collect accepted verified code for M_1 training!
+                    # 2. Collect accepted verified code for M_1 training!
                     record = {
                         "task_id": task_id,
                         "name": name,
