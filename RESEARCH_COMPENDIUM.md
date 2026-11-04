@@ -735,7 +735,67 @@ Our 45-Problem Challenge Bank mathematically inoculates the verifier against hol
 
 > [!NOTE]
 > **Autonomous Chronicler Background Status: ACTIVE & STANDING GUARD**  
-> The Google Drive Research Chronicler agent is permanently registered and active in the background. As the laboratory progresses into Step 2 (Candidate Generator sampling from the Blackwell checkpoint) and Step 3 (Sandboxed Verifier policy updates), this document and the associated Google Drive records will be continuously updated in real time.
+> The Google Drive Research Chronicler agent is permanently registered and active in the background. As the laboratory progresses across all stages of pretraining, self-play exploration, and policy optimization, this living compendium and the Google Drive ablation ledger are continuously synchronized in real time.
+
+---
+
+#### 9.1.2 Milestone 2 Verified: Dual Weights & Biases Telemetry in the Self-Play Generator
+
+With the problem bank verified, we implemented and validated the second pillar of the RSI engine: **The Autonomous Self-Play Candidate Generator (`src/rsi/generator.py`)** with dual-stream real-time telemetry.
+
+```
+                        DUAL-STREAM RSI TELEMETRY PIPELINE
+                        
+                      ┌─────────────────────────────────┐
+                      │    Mirendil-Base DGX Checkpoint │
+                      └────────────────┬────────────────┘
+                                       │ Generates K=5 Candidates
+                                       ▼
+                      ┌─────────────────────────────────┐
+                      │    Sandboxed Subprocess Verifier│
+                      │    (2.0s Timeout Execution)     │
+                      └────────────────┬────────────────┘
+                                       │ Evaluated Completions + Tracebacks
+                   ┌───────────────────┴───────────────────┐
+                   ▼                                       ▼
+      [ STREAM 1: LOCAL DISK ARTIFACTS ]      [ STREAM 2: WEIGHTS & BIASES CLOUD ]
+      • data/rsi/all_candidates.jsonl          • Scalar Metrics Dashboard:
+        (Complete unpruned audit log;           - eval/pass_at_1
+         vital for DPO negative pairs)          - eval/pass_at_k
+      • data/rsi/verified_solutions.jsonl       - eval/syntax_error_rate
+        (Gold accepted code solutions;          - eval/assertion_error_rate
+         training data for M_{i+1})             - eval/verified_solutions_count
+                                               • Interactive wandb.Table:
+                                                 (Inspecting prompts, code, traces)
+```
+
+##### 1. Dual-Stream Telemetry Architecture
+Evaluating thousands of autonomous code completions during self-play creates severe data-management challenges. Our engine implements a dual-sink architecture:
+1. **Local Append-Only JSONL Streams:**
+   * `data/rsi/all_candidates.jsonl`: Records every single generated candidate with prompt, raw completion, error classification (`SYNTAX_ERROR`, `ASSERTION_ERROR`, `TIMEOUT`), execution latency, and error message. This file serves as the raw training corpus for **Direct Preference Optimization (DPO)** negative pairs.
+   * `data/rsi/verified_solutions.jsonl`: High-precision golden dataset containing strictly those completions that passed $100\%$ of unit tests. This forms the verifiable supervised fine-tuning dataset for policy distillation into Model $M_{i+1}$.
+2. **Real-Time Cloud Telemetry (Weights & Biases):**
+   * Dispatches scalar learning curves and distributions directly to project `rsi-coding-pretrain`.
+   * Uploads an interactive multi-column `wandb.Table` allowing researchers to inspect generated code, view compiler tracebacks, and filter attempts by task domain.
+
+##### 2. Comprehensive Scalar Metric Suite
+The generator logs the following real-time performance indicators to W&B:
+
+| Telemetry Key | Description & Mathematical Definition |
+| :--- | :--- |
+| **`eval/pass_at_1`** | Standard zero-shot completion accuracy: percentage of problems solved on the very first sample ($k=1$). |
+| **`eval/pass_at_k`** | Problem discovery rate: percentage of problems where at least one candidate among the $K$ samples passed all assertions. |
+| **`eval/verified_solutions_count`** | Cumulative number of verified correct Python solutions harvested during the run. |
+| **`eval/syntax_error_rate`** | Proportion of completions that failed Python AST compilation or produced syntax errors (measuring syntactic grammar mastery). |
+| **`eval/assertion_error_rate`** | Proportion of completions that were syntactically legal Python but failed test logic assertions (measuring algorithmic reasoning gap). |
+| **`eval/timeout_rate`** | Proportion of solutions triggering the 2.0-second subprocess limit (measuring runaway recursion and infinite loops). |
+| **`eval/elapsed_sec`** | End-to-end wall-clock benchmark duration. |
+
+##### 3. Live DGX Grace Blackwell GB10 Run Verification
+The dual-telemetry generator was verified live on the DGX Spark GB10 cluster node:
+* **Live Telemetry Run URL:** [W&B Run mixi2gc0](https://forge.coreweave.com/wandb/ramakant_shankar/rsi-coding-pretrain/runs/mixi2gc0)
+* **Execution Environment:** NVIDIA GB10 Blackwell GPU, ARM Cortex host, Python 3.12 subprocess sandbox.
+* **Findings:** The streaming pipeline executed with zero I/O blocking, safely isolating syntax crashes and un-terminated string literals while streaming all diagnostics to both local disk buffers and the Weights & Biases interactive dashboard.
 
 ---
 
