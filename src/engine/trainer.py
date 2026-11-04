@@ -180,9 +180,11 @@ class Trainer:
                 current_lr = self.scheduler.get_last_lr()[0]
                 avg_train_loss = accum_loss / self.log_interval
                 
+                train_ppl = math.exp(min(avg_train_loss, 20.0))
                 log_data = {
                     "step": self.step,
                     "train_loss": round(avg_train_loss, 4),
+                    "train_ppl": round(train_ppl, 2),
                     "grad_norm": round(float(grad_norm), 4),
                     "lr": float(f"{current_lr:.6e}"),
                     "tokens_per_sec": int(tok_per_sec),
@@ -190,6 +192,7 @@ class Trainer:
                 print(
                     f"Step {self.step:5d}/{self.total_steps} | "
                     f"Loss: {log_data['train_loss']:.4f} | "
+                    f"PPL: {log_data['train_ppl']:.2f} | "
                     f"GradNorm: {log_data['grad_norm']:.2f} | "
                     f"LR: {current_lr:.2e} | "
                     f"Speed: {log_data['tokens_per_sec']:,} tok/s"
@@ -200,8 +203,13 @@ class Trainer:
             # Evaluation and Checkpointing
             if self.step % self.eval_interval == 0 or self.step == self.total_steps:
                 val_loss = self.evaluate()
-                print(f"--> [Evaluation] Step {self.step} | Val Loss: {val_loss:.4f}")
-                self._log_metric({"step": self.step, "val_loss": round(val_loss, 4)})
+                val_ppl = math.exp(min(val_loss, 20.0))
+                print(f"--> [Evaluation] Step {self.step} | Val Loss: {val_loss:.4f} | Val PPL: {val_ppl:.2f}")
+                self._log_metric({
+                    "step": self.step,
+                    "val_loss": round(val_loss, 4),
+                    "val_ppl": round(val_ppl, 2),
+                })
 
                 # Save best checkpoint
                 if val_loss < self.best_val_loss or self.val_loader is None:

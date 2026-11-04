@@ -35,6 +35,8 @@ def top_p_sampling(logits: torch.Tensor, temperature: float = 0.8, top_p: float 
     return next_token
 
 
+from typing import List
+
 @torch.no_grad()
 def generate(
     model: TransformerDecoder,
@@ -45,25 +47,51 @@ def generate(
     top_p: float = 0.95,
     device: str = "cpu",
 ) -> str:
+    return generate_batch(
+        model=model,
+        tokenizer=tokenizer,
+        prompt=prompt,
+        num_samples=1,
+        max_new_tokens=max_new_tokens,
+        temperature=temperature,
+        top_p=top_p,
+        device=device,
+    )[0]
+
+
+@torch.no_grad()
+def generate_batch(
+    model: TransformerDecoder,
+    tokenizer: CodeTokenizer,
+    prompt: str,
+    num_samples: int = 1,
+    max_new_tokens: int = 64,
+    temperature: float = 0.8,
+    top_p: float = 0.95,
+    device: str = "cpu",
+) -> List[str]:
+    """Generates num_samples candidate completions in a single batched forward pass."""
     model.eval()
     model.to(device)
 
     token_ids = tokenizer.encode(prompt)
-    x = torch.tensor(token_ids, dtype=torch.long, device=device).unsqueeze(0)
+    x = torch.tensor(token_ids, dtype=torch.long, device=device).unsqueeze(0).repeat(num_samples, 1)
 
     for _ in range(max_new_tokens):
-        # Truncate context if exceeding max_seq_len
         idx_cond = x if x.size(1) <= model.config.max_seq_len else x[:, -model.config.max_seq_len:]
         logits, _ = model(idx_cond)
         next_token_logits = logits[:, -1, :]
         next_token = top_p_sampling(next_token_logits, temperature=temperature, top_p=top_p)
-
         x = torch.cat((x, next_token), dim=1)
-        if next_token.item() == tokenizer.eos_id:
-            break
 
-    generated_ids = x[0].tolist()
-    return tokenizer.decode(generated_ids)
+    completions = []
+    for row in x.tolist():
+        generated = row[len(token_ids):]
+        if tokenizer.eos_id in generated:
+            eos_idx = generated.index(tokenizer.eos_id)
+            generated = generated[:eos_idx]
+        completions.append(tokenizer.decode(token_ids + generated))
+    return completions
 
 
 def main():

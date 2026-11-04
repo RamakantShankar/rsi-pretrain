@@ -16,7 +16,7 @@ import torch
 from src.model.transformer import TransformerDecoder, ModelConfig
 from src.tokenizer.bpe import CodeTokenizer
 from src.rsi.verifier import CodeVerifier, VerificationResult
-from generate import generate
+from generate import generate, generate_batch
 
 
 class SelfPlayEngine:
@@ -126,20 +126,23 @@ class SelfPlayEngine:
             prompt = prob["prompt"]
             tests = prob["tests"]
 
-            print(f"[{idx:2d}/{len(problems)}] Task: {task_id:<8s} ({name})")
+            print(f"[{idx:2d}/{len(problems)}] Task: {task_id:<8s} ({name}) - Batched generation (K={candidates_per_problem})...")
             passed_any_for_this_problem = False
 
-            for k in range(candidates_per_problem):
+            # High-throughput parallel candidate generation on Blackwell GB10
+            completions = generate_batch(
+                model=self.model,
+                tokenizer=self.tokenizer,
+                prompt=prompt,
+                num_samples=candidates_per_problem,
+                max_new_tokens=max_new_tokens,
+                temperature=temperature,
+                top_p=top_p,
+                device=self.device,
+            )
+
+            for k, completion in enumerate(completions):
                 total_attempts += 1
-                completion = generate(
-                    model=self.model,
-                    tokenizer=self.tokenizer,
-                    prompt=prompt,
-                    max_new_tokens=max_new_tokens,
-                    temperature=temperature,
-                    top_p=top_p,
-                    device=self.device,
-                )
 
                 # Verify completion with sandboxed unit tests
                 res = self.verifier.verify(completion, tests)
@@ -262,7 +265,7 @@ if __name__ == "__main__":
     parser.add_argument("--checkpoint", type=str, default="checkpoints/152m_wsd_10m_baseline/best_model.pt")
     parser.add_argument("--problems", type=str, default="data/rsi/problem_bank.json")
     parser.add_argument("-k", "--candidates", type=int, default=3)
-    parser.add_argument("--max_problems", type=int, default=10, help="Subset of problems for fast run")
+    parser.add_argument("--max_problems", type=int, default=None, help="Subset of problems for fast run (None for all)")
     parser.add_argument("--temp", type=float, default=0.8)
     parser.add_argument("--top_p", type=float, default=0.95)
     parser.add_argument("--tag", type=str, default="M_0_baseline")
