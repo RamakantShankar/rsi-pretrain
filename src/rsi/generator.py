@@ -9,6 +9,7 @@ import os
 import json
 import time
 import argparse
+import collections
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import torch
@@ -53,6 +54,12 @@ class SelfPlayEngine:
         wandb_project: str = "rsi-coding-pretrain",
         wandb_run_name: Optional[str] = None,
         model_tag: str = "M_0_baseline",
+        autoscale: bool = False,
+        k_mastered: int = 3,
+        k_frontier: int = 18,
+        temp_mastered: float = 0.65,
+        temp_frontier: float = 0.88,
+        mastery_threshold: int = 3,
     ) -> Dict[str, Any]:
         with open(problem_bank_path, "r", encoding="utf-8") as f:
             problems = json.load(f)
@@ -62,6 +69,20 @@ class SelfPlayEngine:
 
         Path(output_verified_path).parent.mkdir(parents=True, exist_ok=True)
         Path(all_candidates_path).parent.mkdir(parents=True, exist_ok=True)
+
+        # Inventory existing verified solutions for compute-optimal autoscaling
+        mastered_counts = collections.Counter()
+        if Path(output_verified_path).exists():
+            try:
+                with open(output_verified_path, "r", encoding="utf-8") as vf:
+                    for line in vf:
+                        if line.strip():
+                            rec = json.loads(line)
+                            t_id = rec.get("task_id")
+                            if t_id:
+                                mastered_counts[t_id] += 1
+            except Exception as e:
+                print(f"[WARNING] Could not parse existing verified solutions: {e}")
 
         # Initialize Weights & Biases if requested
         wandb_table = None
@@ -81,6 +102,11 @@ class SelfPlayEngine:
                         "max_new_tokens": max_new_tokens,
                         "num_problems": len(problems),
                         "problem_bank": problem_bank_path,
+                        "autoscale": autoscale,
+                        "k_mastered": k_mastered if autoscale else None,
+                        "k_frontier": k_frontier if autoscale else None,
+                        "temp_mastered": temp_mastered if autoscale else None,
+                        "temp_frontier": temp_frontier if autoscale else None,
                     },
                 )
                 wandb_table = wandb.Table(
@@ -103,7 +129,10 @@ class SelfPlayEngine:
 
         print(f"\n{'='*70}")
         print(f"STARTING SELF-PLAY EXPLORATION ACROSS {len(problems)} PROBLEMS ({model_tag})")
-        print(f"Candidates per problem (K): {candidates_per_problem} | Temp: {temperature} | Top-p: {top_p}")
+        if autoscale:
+            print(f"AUTOSCALING: ENABLED | Mastered: K={k_mastered}, T={temp_mastered} | Frontier: K={k_frontier}, T={temp_frontier}")
+        else:
+            print(f"AUTOSCALING: DISABLED | Static K={candidates_per_problem} | Temp: {temperature} | Top-p: {top_p}")
         print(f"W&B Dual-Logging: {'ENABLED' if use_wandb else 'DISABLED'}")
         print(f"{'='*70}\n")
 
@@ -126,7 +155,27 @@ class SelfPlayEngine:
             prompt = prob["prompt"]
             tests = prob["tests"]
 
-            print(f"[{idx:2d}/{len(problems)}] Task: {task_id:<8s} ({name}) - Batched generation (K={candidates_per_problem})...")
+            # Compute-optimal autoscaling allocation per task
+            if autoscale:
+                gold_count = mastered_counts.get(task_id, 0)
+                if gold_count >= mastery_threshold:
+                    cur_k = k_mastered
+                    cur_temp = temp_mastered
+                    tier_tag = f"MASTERED ({gold_count} gold) -> K={cur_k}, T={cur_temp}"
+                elif gold_count > 0:
+                    cur_k = max(k_mastered, candidates_per_problem)
+                    cur_temp = 0.75
+                    tier_tag = f"DEVELOPING ({gold_count} gold) -> K={cur_k}, T={cur_temp}"
+                else:
+                    cur_k = k_frontier
+                    cur_temp = temp_frontier
+                    tier_tag = f"FRONTIER (0 gold) -> K={cur_k}, T={cur_temp}"
+            else:
+                cur_k = candidates_per_problem
+                cur_temp = temperature
+                tier_tag = f"STATIC -> K={cur_k}, T={cur_temp}"
+
+            print(f"[{idx:2d}/{len(problems)}] Task: {task_id:<8s} ({name}) - {tier_tag}...")
             passed_any_for_this_problem = False
 
             # High-throughput parallel candidate generation on Blackwell GB10
@@ -134,9 +183,9 @@ class SelfPlayEngine:
                 model=self.model,
                 tokenizer=self.tokenizer,
                 prompt=prompt,
-                num_samples=candidates_per_problem,
+                num_samples=cur_k,
                 max_new_tokens=max_new_tokens,
-                temperature=temperature,
+                temperature=cur_temp,
                 top_p=top_p,
                 device=self.device,
             )

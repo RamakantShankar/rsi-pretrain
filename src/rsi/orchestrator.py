@@ -39,6 +39,11 @@ class RSIOrchestrator:
         temperature: float = 0.8,
         use_wandb: bool = True,
         wandb_project: str = "rsi-coding-pretrain",
+        autoscale: bool = True,
+        k_frontier: int = 18,
+        k_mastered: int = 3,
+        temp_frontier: float = 0.88,
+        temp_mastered: float = 0.65,
     ):
         self.current_gen = start_generation
         self.max_generations = max_generations
@@ -55,6 +60,11 @@ class RSIOrchestrator:
         self.temperature = temperature
         self.use_wandb = use_wandb
         self.wandb_project = wandb_project
+        self.autoscale = autoscale
+        self.k_frontier = k_frontier
+        self.k_mastered = k_mastered
+        self.temp_frontier = temp_frontier
+        self.temp_mastered = temp_mastered
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.generation_history: List[Dict[str, Any]] = []
@@ -102,6 +112,11 @@ class RSIOrchestrator:
             wandb_project=self.wandb_project,
             wandb_run_name=eval_run_name,
             model_tag=f"M_{gen}_loop",
+            autoscale=self.autoscale,
+            k_frontier=self.k_frontier,
+            k_mastered=self.k_mastered,
+            temp_frontier=self.temp_frontier,
+            temp_mastered=self.temp_mastered,
         )
 
         pass_at_1 = eval_summary["pass_at_1"]
@@ -269,6 +284,12 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=1.2e-4, help="Policy distillation learning rate")
     parser.add_argument("--wandb", action="store_true", help="Enable W&B dual-logging")
     parser.add_argument("--project", type=str, default="rsi-coding-pretrain")
+    parser.add_argument("--autoscale", dest="autoscale", action="store_true", default=True, help="Autoscale search breadth and temperature")
+    parser.add_argument("--no-autoscale", dest="autoscale", action="store_false", help="Disable autoscaling")
+    parser.add_argument("--k_frontier", type=int, default=18, help="Candidates for unsolved frontier tasks")
+    parser.add_argument("--k_mastered", type=int, default=3, help="Candidates for mastered tasks")
+    parser.add_argument("--temp_frontier", type=float, default=0.88, help="Temperature for frontier tasks")
+    parser.add_argument("--temp_mastered", type=float, default=0.65, help="Temperature for mastered tasks")
     args = parser.parse_args()
 
     orchestrator = RSIOrchestrator(
@@ -280,5 +301,10 @@ if __name__ == "__main__":
         learning_rate=args.lr,
         use_wandb=args.wandb,
         wandb_project=args.project,
+        autoscale=args.autoscale,
+        k_frontier=args.k_frontier,
+        k_mastered=args.k_mastered,
+        temp_frontier=args.temp_frontier,
+        temp_mastered=args.temp_mastered,
     )
     orchestrator.run_loop()
