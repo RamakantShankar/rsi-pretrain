@@ -135,7 +135,7 @@ class RSIOrchestrator:
             problem_bank_path=self.problem_bank_path,
             target_tokens=4_000_000,
             replay_ratio=0.10,
-            bootstrap_if_empty=False,  # Autonomous loop uses 100% self-generated code
+            bootstrap_if_empty=True,  # Cold-Start bootstrap protection if 0 solutions passed
         )
 
         # -------------------------------------------------------------

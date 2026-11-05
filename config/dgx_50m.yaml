@@ -1,0 +1,35 @@
+# DGX Grace Blackwell (GB10) Production 50M-Token Pretraining Configuration
+experiment_name: "152m_wsd_50m_baseline"
+
+# Model Architecture (~152.5M parameter coding foundation model)
+model:
+  vocab_size: 100262
+  dim: 768
+  n_layers: 12
+  n_heads: 12
+  n_kv_heads: 4         # Grouped-Query Attention (3:1 query:KV ratio)
+  max_seq_len: 2048     # Full 2k token packed context window
+  rope_theta: 500000.0  # Extended context capability
+  tie_embeddings: true  # Tied embeddings for balanced ~152.5M capacity
+  dropout: 0.0
+
+# Training Hyperparameters for DGX Blackwell GPU
+training:
+  batch_size: 8
+  grad_accum_steps: 4   # Effective global batch size = 32 * 2048 = 65,536 tokens/step
+  learning_rate: 6.0e-4
+  weight_decay: 0.1
+  scheduler_type: "wsd" # Warmup-Stable-Decay
+  warmup_steps: 100     # 100 steps warmup (6.5M tokens)
+  total_steps: 1000     # 1000 steps = 65.5M tokens processed (stable to 850, decay 850-1000)
+  max_grad_norm: 1.0
+  dtype: "bfloat16"     # Native Blackwell tensor core acceleration
+  log_interval: 10
+  eval_interval: 100
+  wandb: true
+  wandb_project: "rsi-coding-pretrain"
+
+# Data: 50M Token Shards
+data:
+  train_shards: "data/shards_50m/train_shard_*.bin"
+  val_split: 0.05
