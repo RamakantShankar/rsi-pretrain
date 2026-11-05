@@ -605,6 +605,7 @@ All experiments in the Mirendil-Base pretraining program are tracked determinist
 | **`path1_generation5_m5_distill`** | 152.5M Checkpoint (`152m_rsi_m4`) | Autoscaled Replay Shard (`train_shard_rsi_m5.bin`, 280 sol) | WSD (50 steps, LR 1.2e-4) | **2.9120** | **2.8620** | **17.50** | ✅ **Completed & Promoted (Cycle 3: $M_4 \to M_5$).** **Pass@1 = 16.4%** (9/55 zero-shot). **Verified solutions DOUBLED: 146 → 280 solutions** across 9 tasks (18-36 diverse variants per task). Total rollouts logged: **4,256 completions**. Checkpoint `checkpoints/152m_rsi_m5/best_model.pt` officially PROMOTED to active baseline! W&B: Rollout [zkre0bi8](https://forge.coreweave.com/wandb/ramakant_shankar/rsi-coding-pretrain/runs/zkre0bi8), Distill [fqx6wy3u](https://forge.coreweave.com/wandb/ramakant_shankar/rsi-coding-pretrain/runs/fqx6wy3u), Guard [a5z2rl9j](https://forge.coreweave.com/wandb/ramakant_shankar/rsi-coding-pretrain/runs/a5z2rl9j), Summary [pku1xrtd](https://forge.coreweave.com/wandb/ramakant_shankar/rsi-coding-pretrain/runs/pku1xrtd). |
 | **`152m_wsd_50m_baseline`** | 152.5M Foundation ($M_{0\_\text{v2}}$)<br>($d=768, L=12, H=12, KV=4$, Tied) | `codeparrot-clean` (50M tokens, 10 shards) | WSD (1,000 steps, batch=32) | ~2.65 | **2.6956** | **14.81** | ✅ **Completed & Verified (Flagship 50M Pretraining).** 50M tokens packed in 21.7s into 10 uint32 shards. 1,000 WSD steps on DGX Grace Blackwell GB10 at 17,689 tok/s. Zero gradient explosions (grad_norm ~0.32). Validation loss dropped 3.4435 → 2.6956; Validation PPL collapsed from 31.29 → 14.81 (>50% uncertainty reduction!). BPB reduced from 1.325 → 1.037. W&B: [Run ec33nwpx](https://forge.coreweave.com/wandb/ramakant_shankar/rsi-coding-pretrain/runs/ec33nwpx). |
 | **`overnight_lifelong_rsi_50m`** | 152.5M ($M_{0\_\text{v2}} \to M_{10\_\text{v2}}$) | Autonomous Autoscaled Replay Shards (`verified_solutions_50m.jsonl`) | WSD (50 steps/gen, LR 1.2e-4, 10 Gens) | ~2.85 | **2.6800** | **14.58** | 🎉 **Completed & Promoted (All 10 Generations: $M_{0\_\text{v2}} \to M_{10\_\text{v2}}$).** 4,769.7s (1h 19m) autonomous execution. All 10 consecutive generations satisfied Regression Guard and were PROMOTED! **100% of Tier-1 Primitives Solved (10/10 tasks)!** Landmark breakthrough: `tier1_09` (`get_last_element`) cracked by Candidate #16 on K=18 breadth. Verified corpus expanded to **672 gold solutions** in `verified_solutions_50m.jsonl`. **11,331 rollouts** evaluated. Active policy: `checkpoints/v2/152m_rsi_m10/best_model.pt`. |
+| **`approach1_tier2_string_anchors_m10`** | 152.5M Checkpoint ($M_{10\_\text{v2}}$)<br>(`152m_rsi_m10`) | 674-Solution Replay Buffer<br>(672 Gold + 2 String Anchors) | Autoscaled WSD ($M_{10} \to M_{11} \to M_{12}$)<br>50 steps/gen, LR 1.2e-4 | *Evaluating* | *Evaluating* | Target Frontier | 🔬 **Active Experiment (Approach 1: Tier-2 String Curriculum Anchors).** Testing Hypothesis 1: Seeding 2 canonical string anchors (`str_01`: `reverse_string` `return s[::-1]`, `str_02`: `is_palindrome` `clean = s.lower(); return clean == clean[::-1]`) into `verified_solutions_50m.jsonl` (674 total solutions). Evaluates whether 152.5M $M_{10}$ assimilates slice syntax via 90/10 experience replay to autonomously unlock the remaining 8 Tier-2 string problems. Traversal: $M_{10} \to M_{11} \to M_{12}$ ($K_{\text{frontier}}=18, T=0.88$; $K_{\text{mastered}}=3, T=0.65$). W&B Run: [`eval_m10_autonomous_loop` (m655roqm)](https://forge.coreweave.com/wandb/ramakant_shankar/rsi-coding-pretrain/runs/m655roqm). |
 | **`path2_smollm_python_edu`** | 152.5M (d=768, L=12, H=12, KV=4, Tied) | SmolLM `python-edu` (30M clean tokens) | WSD (1,000 steps) | TBD | TBD | TBD | ⏳ **In Queue (Path 2).** Replace web boilerplate with high-educational density code to improve sample efficiency. |
 | **`path3_wsd_vs_cosine_gb10`** | 152.5M (Twin Runs: WSD vs. Cosine) | `codeparrot-clean` (10M -> 20M extension) | WSD vs. Cosine (500 + 500 steps) | TBD | TBD | TBD | ⏳ **In Queue (Path 3).** Controlled head-to-head ablation measuring loss spikes and restart dynamics on GB10. |
 
@@ -1459,6 +1460,79 @@ The headless daemon logged **11,331 candidate code rollouts** into `data/rsi/all
    At 10M tokens (PPL 31.29), policy distillation was slow and brittle. At 50M tokens (PPL 14.81), the foundation model internalized Python grammar so thoroughly that the very first generation ($M_{1\_\text{v2}}$) immediately leaped to 16.4% Pass@1—a milestone that previously required 4 generations of iterative distillation.
 3. **Pure Zero-Human Recursive Synthesis:**
    Across 10 generations and 672 verified solutions, **zero human demonstrations** were introduced. The model improved exclusively through execution feedback from the Python interpreter, proving the viability of autonomous self-improving code synthesis loops.
+
+---
+
+#### 9.1.9 Approach 1: Tier-2 String Curriculum Anchors on Model $M_{10}$
+
+Having accomplished 100% mastery over Tier-1 elementary primitives across the 10-generation overnight mission ($M_0 \to M_{10}$), the laboratory launched **Approach 1**: testing whether curriculum scaffolding can unlock Tier-2 string manipulation problems.
+
+```mermaid
+flowchart TD
+    subgraph Seed["Curriculum Seeding"]
+        A1["Anchor 1: str_01 (reverse_string)<br/>return s[::-1]"]
+        A2["Anchor 2: str_02 (is_palindrome)<br/>clean = s.lower()<br/>return clean == clean[::-1]"]
+    end
+
+    subgraph Buffer["Expanded Replay Buffer"]
+        A1 & A2 --> Pool["674 Verified Solutions Buffer<br/>672 Gold Tier-1 Solutions<br/>+ 2 Seeded String Anchors"]
+        Pool --> Shard["90/10 Experience Replay Shard<br/>(train_shard_rsi_m11.bin)"]
+    end
+
+    subgraph Loop["Autonomous Autoscaled Exploration"]
+        M10["Base Policy: Model M_10<br/>(checkpoints/v2/152m_rsi_m10)"] --> Distill["50-Step Policy Distillation<br/>WSD Schedule | LR 1.2e-4"]
+        Shard --> Distill
+        Distill --> M11["Policy M_11"]
+        M11 --> Eval["Autoscaled Frontier Search<br/>Mastered (Tier-1): K=3, T=0.65<br/>Frontier (Tier-2 Strings): K=18, T=0.88"]
+        Eval --> Frontier["Unlock Remaining 8 Tier-2 Tasks?<br/>(count_vowels, capitalize, etc.)"]
+    end
+
+    style Seed fill:#3b82f6,stroke:#1d4ed8,color:#ffffff,stroke-width:2px
+    style Buffer fill:#10b981,stroke:#047857,color:#ffffff,stroke-width:2px
+    style Loop fill:#8b5cf6,stroke:#6d28d9,color:#ffffff,stroke-width:2px
+```
+
+##### 1. Intuition & Scientific Hypothesis: The Curriculum Spark
+In pure self-play, an agent exploring without hints must guess complex syntactic patterns from scratch. While arithmetic operators (`+`, `-`, `*`, `/`) and basic indexing (`items[0]`, `items[-1]`) appear with high frequency in code pretraining corpora, idiomatic Python sequence reversing via step slicing (`s[::-1]`) has a much narrower combinatorial probability.
+
+* **Hypothesis 1 (Curriculum Scaffolding):** Seeding a minimal set of canonical syntax anchors into the experience replay buffer creates an inductive bias in the policy. Once the model internalizes the token patterns for slicing (`[::-1]`) and string normalization (`s.lower()`) via 90/10 distillation, its autonomous search at $T=0.88$ with $K=18$ breadth will generalize to solve the remaining 8 Tier-2 string problems without additional human hints.
+
+##### 2. Implementation & Experimental Profile
+Governed by the autonomous RSI engine on `spark-320a.local`:
+
+| Parameter / Component | Specification | Scientific Purpose |
+| :--- | :--- | :--- |
+| **Base Policy** | `checkpoints/v2/152m_rsi_m10/best_model.pt` | The fully converged 152.5M Generation 10 model (10/10 Tier-1 tasks mastered). |
+| **Seeded Anchors** | `str_01` (`reverse_string`) & `str_02` (`is_palindrome`) | Canonical slice step syntax and multi-statement string normalization. |
+| **Replay Corpus** | `data/rsi/verified_solutions_50m.jsonl` (674 solutions) | 672 unit-tested machine solutions + 2 seeded curriculum anchors. |
+| **Traversal Horizon** | Generations $M_{10} \to M_{11} \to M_{12}$ | Multi-cycle evaluation of curriculum assimilation and generalization. |
+| **Autoscaling Allocation** | Mastered: $K=3, T=0.65$ \| Frontier: $K=18, T=0.88$ | Maximizes exploration entropy on uncracked string tasks while safeguarding Tier-1 solutions. |
+| **W&B Live Tracking** | [`eval_m10_autonomous_loop` (m655roqm)](https://forge.coreweave.com/wandb/ramakant_shankar/rsi-coding-pretrain/runs/m655roqm) | Real-time tracking of candidate rollouts, pass rates, and AST syntax errors. |
+
+##### 3. Mathematical Accounting: Experience Replay Exposure
+In a 90/10 replay shard consisting of 4,000,000 tokens:
+$$\text{Replay Token Allotment} = 4,000,000 \times 0.10 = 400,000 \text{ tokens}$$
+With 674 solutions in the buffer and an average solution length of approximately 40 tokens:
+$$\text{Total Tokens per Epoch} = 674 \times 40 = 26,960 \text{ tokens}$$
+$$\mathbb{E}[\text{Repetitions per Solution}] = \frac{400,000}{26,960} \approx 14.8 \text{ repetitions/shard}$$
+This calibration ensures that each string anchor receives roughly 15 gradient updates per 50-step distillation cycle—sufficient for gradient descent to align the attention heads on slice token sequences without diluting the 90% pretraining regularization signal.
+
+##### 4. Target Frontier: Tier-2 String Problem Suite
+The autonomous loop evaluates generalization across all 10 problems in Tier 2:
+1. `str_01: reverse_string` (*Curriculum Anchor: `return s[::-1]`*)
+2. `str_02: is_palindrome` (*Curriculum Anchor: `clean = s.lower(); return clean == clean[::-1]`*)
+3. `str_03: count_vowels` (*Target: Loop or comprehension counting vowels*)
+4. `str_04: capitalize_words` (*Target: `s.title()` or manual capitalization*)
+5. `str_05: remove_vowels` (*Target: String filtering*)
+6. `str_06: count_consonants` (*Target: Alphabetic filtering*)
+7. `str_07: string_length` (*Target: `len(s)`*)
+8. `str_08: repeat_string` (*Target: `s * n`*)
+9. `str_09: contains_substring` (*Target: `sub in s`*)
+10. `str_10: truncate_string` (*Target: `s[:max_len]`*)
+
+##### 5. Evaluation Matrix & Verdict Criteria
+* **Positive Generalization Verdict:** If Generation $M_{11}$ or $M_{12}$ achieves zero-shot solutions on $\ge 3$ Tier-2 tasks beyond the 2 seeded anchors, Hypothesis 1 is confirmed (curriculum transfer occurs).
+* **Negative / Starvation Verdict:** If the model memorizes the 2 anchors but fails all other string tasks, it proves that 152M models require broader vocabulary/idiom density before self-play can bridge to complex string algorithms, motivating Path 2 (`SmolLM` `python-edu`).
 
 ---
 
