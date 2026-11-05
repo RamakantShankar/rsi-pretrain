@@ -290,11 +290,21 @@ if __name__ == "__main__":
     parser.add_argument("--k_mastered", type=int, default=3, help="Candidates for mastered tasks")
     parser.add_argument("--temp_frontier", type=float, default=0.88, help="Temperature for frontier tasks")
     parser.add_argument("--temp_mastered", type=float, default=0.65, help="Temperature for mastered tasks")
+    parser.add_argument("--checkpoint_dir", type=str, default="checkpoints", help="Directory for model checkpoints")
+    parser.add_argument("--shard_dir", type=str, default="data/shards", help="Directory for replay shards")
+    parser.add_argument("--verified_path", type=str, default="data/rsi/verified_solutions.jsonl", help="Path to verified solutions JSONL")
+    parser.add_argument("--all_candidates_path", type=str, default="data/rsi/all_candidates.jsonl", help="Path to all candidates JSONL")
+    parser.add_argument("--baseline_shard", type=str, default="data/shards/train_shard_00000.bin", help="Path to baseline pretrain shard")
     args = parser.parse_args()
 
     orchestrator = RSIOrchestrator(
         start_generation=args.start_gen,
         max_generations=args.max_gen,
+        checkpoint_dir=args.checkpoint_dir,
+        shard_dir=args.shard_dir,
+        verified_path=args.verified_path,
+        all_candidates_path=args.all_candidates_path,
+        baseline_shard_path=args.baseline_shard,
         candidates_k=args.candidates,
         temperature=args.temp,
         steps_per_gen=args.steps,
