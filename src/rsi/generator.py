@@ -59,7 +59,7 @@ class SelfPlayEngine:
         k_frontier: int = 18,
         temp_mastered: float = 0.65,
         temp_frontier: float = 0.88,
-        mastery_threshold: int = 3,
+        mastery_threshold: int = 5,
     ) -> Dict[str, Any]:
         with open(problem_bank_path, "r", encoding="utf-8") as f:
             problems = json.load(f)
@@ -155,7 +155,7 @@ class SelfPlayEngine:
             prompt = prob["prompt"]
             tests = prob["tests"]
 
-            # Compute-optimal autoscaling allocation per task
+            # Compute-optimal autoscaling allocation per task (Hysteresis Breadth Rule)
             if autoscale:
                 gold_count = mastered_counts.get(task_id, 0)
                 if gold_count >= mastery_threshold:
@@ -163,8 +163,9 @@ class SelfPlayEngine:
                     cur_temp = temp_mastered
                     tier_tag = f"MASTERED ({gold_count} gold) -> K={cur_k}, T={cur_temp}"
                 elif gold_count > 0:
-                    cur_k = max(k_mastered, candidates_per_problem)
-                    cur_temp = 0.75
+                    # Developing tasks (< mastery_threshold) retain full exploratory breadth to discover algorithm variants!
+                    cur_k = k_frontier
+                    cur_temp = temp_frontier
                     tier_tag = f"DEVELOPING ({gold_count} gold) -> K={cur_k}, T={cur_temp}"
                 else:
                     cur_k = k_frontier
