@@ -15,7 +15,9 @@ ENV/
 checkpoints/
 data/cache/
 data/shards/
-data/rsi/all_candidates.jsonl
+data/shards_50m/
+data/shards_v2/
+data/rsi/all_candidates*.jsonl
 *.bin
 *.pt
 *.pth
