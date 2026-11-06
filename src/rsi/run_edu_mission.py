@@ -122,23 +122,25 @@ def run_mission(
     log(f"    Distillation:          50 steps per cycle @ LR 1.2e-4 (WSD cosine decay)")
 
     orchestrator = RSIOrchestrator(
+        start_generation=0,
+        max_generations=max_rsi_generations,
         checkpoint_dir=str(v3_ckpt_dir),
         shard_dir=str(v3_shard_dir),
         verified_path=str(verified_pool_path),
         all_candidates_path=str(all_candidates_path),
-        baseline_shard=str(baseline_shard),
+        baseline_shard_path=str(baseline_shard),
         k_frontier=18,
         k_mastered=3,
         temp_frontier=0.88,
         temp_mastered=0.65,
         autoscale=True,
-        distill_steps=50,
-        distill_lr=1.2e-4,
-        wandb_logging=use_wandb,
+        steps_per_gen=50,
+        learning_rate=1.2e-4,
+        use_wandb=use_wandb,
     )
 
     t_start_rsi = time.time()
-    orchestrator.run_lifecycle(start_gen=0, max_gen=max_rsi_generations)
+    orchestrator.run_loop()
     total_rsi_time = time.time() - t_start_rsi
 
     log("=" * 80)

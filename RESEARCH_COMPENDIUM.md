@@ -52,27 +52,14 @@
 
 Modern foundation model pretraining has historically been perceived as the exclusive domain of massive industrial research clusters requiring tens to hundreds of research engineers. The **Mirendil-Base reproduction project** flips this paradigm entirely: **1 lone human researcher operating in tight synergy with autonomous AI agents via Recursive Self-Improvement (RSI)**, reproducing Behnam Neyshabur's Mirendil-Base pretraining methodology on desktop-scale next-generation NVIDIA Grace Blackwell hardware.
 
-```
-       ┌────────────────────────────────────────────────────────┐
-       │                Lone Human Researcher                   │
-       │               (Scientific Flight Director)             │
-       └───────────────────────────┬────────────────────────────┘
-                                   │ Hypotheses & Targets
-                                   ▼
-       ┌────────────────────────────────────────────────────────┐
-       │              Autonomous RSI Agent Loop                 │
-       │  • Shard Generation & Zero-Copy Tokenization           │
-       │  • PyTorch Architecture Construction & Verification    │
-       │  • DGX Grace Blackwell GB10 Pretraining Dispatch       │
-       │  • Real-Time Anomaly Triage & Checkpoint Resumption    │
-       │  • Automated AST Syntax & PPL Telemetry Recording      │
-       └───────────────────────────┬────────────────────────────┘
-                                   │ Autonomous Backprop & Weights
-                                   ▼
-       ┌────────────────────────────────────────────────────────┐
-       │       Mirendil-Base Foundation Coding Model (152.5M)   │
-       │     Pretrained from scratch on clean Python corpora    │
-       └────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Human["👤 Lone Human Researcher<br/>(Scientific Flight Director)"] -->|Formulate Hypotheses & Targets| Agent["🤖 Autonomous RSI Agent Loop<br/>• Shard Generation & Zero-Copy Tokenization<br/>• PyTorch Architecture Construction & Verification<br/>• DGX Grace Blackwell GB10 Pretraining Dispatch<br/>• Real-Time Anomaly Triage & Checkpoint Resumption<br/>• Automated AST Syntax & PPL Telemetry Recording"]
+    Agent -->|Autonomous Backpropagation & Policy Distillation| Model["🧠 Mirendil-Base Foundation Coding Model (152.5M)<br/>Pretrained from Scratch on Clean Python Corpora"]
+
+    style Human fill:#3b82f6,stroke:#1d4ed8,color:#ffffff,stroke-width:2px
+    style Agent fill:#8b5cf6,stroke:#6d28d9,color:#ffffff,stroke-width:2px
+    style Model fill:#10b981,stroke:#047857,color:#ffffff,stroke-width:2px
 ```
 
 > [!NOTE]
@@ -99,54 +86,27 @@ Pretraining foundation language models from scratch demands extreme memory bandw
 
 The Mirendil-Base architecture rejects legacy 2017 Vaswani-era Transformer components (e.g. Post-LN, absolute sinusoidal embeddings, ReLU feed-forward networks, and standard multi-head attention) in favor of the battle-tested modern open-weights stack popularized by LLaMA 3, Gemma 2, and DeepSeek.
 
-```
-                      Input Token IDs [Batch, Seq_len]
-                                     │
-                                     ▼
-                      ┌──────────────────────────────┐
-                      │    Token Embedding Matrix    │  (Shape: [100262, 768])
-                      └──────────────┬───────────────┘
-                                     │
-                 ┌───────────────────┴───────────────────┐
-                 │                                       │
-                 │  ┌─────────────────────────────────┐  │
-                 │  │       RMSNorm Layer (Pre-LN)    │  │
-                 │  └────────────────┬────────────────┘  │
-                 │                   ▼                   │
-                 │  ┌─────────────────────────────────┐  │
-                 │  │ Grouped-Query Attention (GQA)   │  │  (12 Q Heads, 4 KV Heads)
-                 │  │    + 2D Rotary Embeddings (RoPE)│  │  (Head Dim = 64)
-                 │  └────────────────┬────────────────┘  │
-                 │                   │                   │
-                 │                   ▼                   │
-                 │               [ ⊕ Add ] <─────────────┘  (Residual Connection 1)
-                 │                   │
-                 │  ┌────────────────┴────────────────┐
-                 │  │       RMSNorm Layer (Pre-LN)    │
-                 │  └────────────────┬────────────────┘
-                 │                   ▼
-                 │  ┌─────────────────────────────────┐
-                 │  │       SwiGLU Feed-Forward       │  (w_gate, w_up: 768 -> 2048)
-                 │  │       (8/3 Dimensionality)      │  (w_down: 2048 -> 768)
-                 │  └────────────────┬────────────────┘
-                 │                   │
-                 │                   ▼
-                 └──────────────> [ ⊕ Add ]                 (Residual Connection 2)
-                                     │
-                       [ Repeat for L = 12 Layers ]
-                                     │
-                                     ▼
-                      ┌──────────────────────────────┐
-                      │        Final RMSNorm         │  (Dim: 768)
-                      └──────────────┬───────────────┘
-                                     │
-                                     ▼
-                      ┌──────────────────────────────┐
-                      │       Tied LM Head Head      │  (Shares Embedding Weights!)
-                      └──────────────┬───────────────┘
-                                     │
-                                     ▼
-                      Logits Matrix [Batch, Seq_len, 100262]
+```mermaid
+flowchart TD
+    Input["Input Token IDs [Batch, Seq_Len]"] --> Emb["Token Embedding Matrix<br/>Shape: [100,262, 768] (Tied with LM Head)"]
+    Emb --> DecBlocks["12x Stacked Transformer Decoder Blocks"]
+    
+    subgraph DecoderBlock["Inside Each Transformer Decoder Block (L = 1..12)"]
+        PreLN1["RMSNorm Layer 1 (Pre-LN)"] --> GQA["Grouped-Query Attention (GQA)<br/>12 Query Heads, 4 KV Heads (3:1 Ratio)<br/>Head Dim = 64 | RoPE Theta = 500,000"]
+        GQA --> Add1["[+] Residual Addition 1"]
+        Add1 --> PreLN2["RMSNorm Layer 2 (Pre-FFN)"]
+        PreLN2 --> SwiGLU["SwiGLU Feed-Forward Network<br/>Dim 768 -> 2048 (8/3 Expansion)<br/>w_gate, w_up, w_down with SiLU Gating"]
+        SwiGLU --> Add2["[+] Residual Addition 2"]
+    end
+    
+    DecBlocks --> FinalNorm["Final RMSNorm Layer (Dim: 768)"]
+    FinalNorm --> LMHead["Tied Output LM Head<br/>Reuses [100,262, 768] Embedding Matrix (0 Extra Params)"]
+    LMHead --> Logits["Next-Token Logits Matrix [Batch, Seq_Len, 100,262]<br/>Cross-Entropy Loss vs Shifted Targets"]
+
+    style Emb fill:#3b82f6,stroke:#1d4ed8,color:#ffffff,stroke-width:2px
+    style GQA fill:#8b5cf6,stroke:#6d28d9,color:#ffffff,stroke-width:2px
+    style SwiGLU fill:#ec4899,stroke:#be185d,color:#ffffff,stroke-width:2px
+    style LMHead fill:#10b981,stroke:#047857,color:#ffffff,stroke-width:2px
 ```
 
 ### 3.1 RMSNorm: Scale Invariance Without Mean-Centering
@@ -229,32 +189,20 @@ $$\text{FFN}_{\text{standard}}(\mathbf{x}) = \max(0, \mathbf{x} \mathbf{W}_1 + \
 
 Shazeer (2020) demonstrated that introducing **gating units (SwiGLU)** provides superior representation density and faster convergence. SwiGLU employs three parameter matrices: $\mathbf{W}_{\text{gate}}$, $\mathbf{W}_{\text{up}}$, and $\mathbf{W}_{\text{down}}$.
 
-```
-                          Input Vector x (Dim: 768)
-                                     │
-                   ┌─────────────────┴─────────────────┐
-                   ▼                                   ▼
-          [ W_up Matrix ]                     [ W_gate Matrix ]
-         "Candidate Generator"               "Relevance Filter"
-          (768 -> 2048)                       (768 -> 2048)
-                   │                                   │
-                   │                                   ▼
-                   │                           [ SiLU Activation ]
-                   │                           Squashes irrelevant
-                   │                           features to ~0.0
-                   │                                   │
-                   └─────────────────┬─────────────────┘
-                                     ▼
-                            [ ⊙ Element-Wise ]
-                             Direct Modulation
-                                     │
-                                     ▼
-                            [ W_down Matrix ]
-                           "Context Summarizer"
-                            (2048 -> 768)
-                                     │
-                                     ▼
-                         Clean Output Vector (Dim: 768)
+```mermaid
+flowchart TD
+    X["Input Activation Vector x (Dim: 768)"] --> Up["W_up Matrix (Candidate Generator)<br/>Linear(768 -> 2048)"]
+    X --> Gate["W_gate Matrix (Relevance Filter)<br/>Linear(768 -> 2048)"]
+    Gate --> Act["SiLU Activation Unit<br/>z * sigmoid(z) (Non-linear Gating)"]
+    Up --> Mult["[⊙] Element-Wise Multiplication (Hadamard Modulation)"]
+    Act --> Mult
+    Mult --> Down["W_down Matrix (Context Summarizer)<br/>Linear(2048 -> 768)"]
+    Down --> Out["SwiGLU Output Vector (Dim: 768)"]
+
+    style Up fill:#3b82f6,stroke:#1d4ed8,color:#ffffff,stroke-width:2px
+    style Gate fill:#8b5cf6,stroke:#6d28d9,color:#ffffff,stroke-width:2px
+    style Act fill:#ec4899,stroke:#be185d,color:#ffffff,stroke-width:2px
+    style Down fill:#10b981,stroke:#047857,color:#ffffff,stroke-width:2px
 ```
 
 #### The SwiGLU Formulation:
@@ -311,22 +259,25 @@ One of the most consequential architectural decisions in foundation language mod
 
 Modern code models employ large vocabularies (e.g. OpenAI's `cl100k_base` with 100,000 byte-pair tokens, augmented with 262 special Fill-In-the-Middle `<fim_prefix>`, `<fim_middle>`, `<fim_suffix>` and end-of-text tokens, total $V = 100,262$).
 
-```
-                      VOCABULARY TAX PARAMETER BREAKDOWN
-                      
-      [ Tied Embeddings: 152.5M Total ]        [ Untied Embeddings: 229.5M Total ]
-      
-      ┌───────────────────────────────┐        ┌───────────────────────────────┐
-      │   Tied Embeddings / Head      │        │    Input Embeddings Matrix    │
-      │   77.0 Million Params (50.5%) │        │   77.0 Million Params (33.5%) │
-      ├───────────────────────────────┤        ├───────────────────────────────┤
-      │                               │        │    Output LM Projection Head  │
-      │   Transformer Layers (L=12)   │        │   77.0 Million Params (33.5%) │
-      │   75.5 Million Params (49.5%) │        ├───────────────────────────────┤
-      │                               │        │   Transformer Layers (L=12)   │
-      │                               │        │   75.5 Million Params (33.0%) │
-      └───────────────────────────────┘        └───────────────────────────────┘
-           BALANCED & COMPACT                    EMBEDDINGS DROWN OUT TRANSFORMER!
+```mermaid
+flowchart LR
+    subgraph Tied["Tied Embeddings: 152.5M Total (Our Architecture)"]
+        direction TB
+        T1["Tied Embedding & Output Head<br/>77.0M Parameters (50.5%)"]
+        T2["12 Transformer Blocks Core<br/>75.5M Parameters (49.5%)"]
+        T1 --- T2
+    end
+
+    subgraph Untied["Untied Embeddings: 229.5M Total (The Pathology)"]
+        direction TB
+        U1["Input Embedding Matrix<br/>77.0M Parameters (33.5%)"]
+        U2["Output LM Head Matrix<br/>77.0M Parameters (33.5%)"]
+        U3["12 Transformer Blocks Core<br/>75.5M Parameters (33.0%)"]
+        U1 --- U2 --- U3
+    end
+
+    style Tied fill:#10b981,stroke:#047857,color:#ffffff,stroke-width:2px
+    style Untied fill:#ef4444,stroke:#b91c1c,color:#ffffff,stroke-width:2px
 ```
 
 ### The Exact Mathematical Accounting:
@@ -363,18 +314,20 @@ In traditional NLP training pipelines, batches are formed by taking documents of
 > [!CAUTION]
 > **The 90% GPU Waste Trap:** In source code repositories, over $70\%$ of functions and scripts contain fewer than 200 tokens. Padding each sequence to a 2,048 context window means that up to $90\%$ of every GPU matrix multiply is spent multiplying zeros by zeros! Even worse, standard dataloaders that parse raw text, JSON, or Parquet files on the fly saturate host CPU cores and PCIe lanes, leaving high-performance Blackwell Tensor Cores starved of data.
 
-```
-       NAIVE PADDING APPROACH (90% GPU FLOPs Wasted):
-       ┌──────────────────────┬────────────────────────────────────────────────────────┐
-       │ def add(a, b): ...   │ <pad> <pad> <pad> <pad> <pad> <pad> <pad> <pad> <pad>  │
-       └──────────────────────┴────────────────────────────────────────────────────────┘
-       ▲ Real Code (10%)       ▲ Useless Padding Processed by Tensor Cores (90% Wasted!)
+```mermaid
+flowchart TD
+    subgraph Naive["Naive Padding Approach (90% GPU FLOPs Wasted)"]
+        direction LR
+        N1["Real Code Tokens (10%)"] --- N2["<pad> Padding Tokens Multiply Zeros by Zeros (90% Wasted Compute)"]
+    end
 
-       CONTINUOUS SEQUENCE PACKING (100% Compute Efficiency):
-       ┌────────────────┬──────────────────────┬───────────────┬───────────────────────┐
-       │ File 1 Tokens  │ <|endoftext|> File 2 │ File 3 Tokens │ <|endoftext|> File 4  │
-       └────────────────┴──────────────────────┴───────────────┴───────────────────────┘
-       ▲ 100% of tokens in every 2,048 window are legitimate next-token training targets!
+    subgraph Packed["Our Continuous Sequence Packing (100% Compute Efficiency)"]
+        direction LR
+        P1["File 1 Tokens"] --> P2["<|endoftext|>"] --> P3["File 2 Tokens"] --> P4["<|endoftext|>"] --> P5["File 3 Tokens..."]
+    end
+
+    style Naive fill:#ef4444,stroke:#b91c1c,color:#ffffff,stroke-width:2px
+    style Packed fill:#10b981,stroke:#047857,color:#ffffff,stroke-width:2px
 ```
 
 ### The Binary Memmap Architecture:
@@ -617,19 +570,18 @@ All experiments in the Mirendil-Base pretraining program are tracked determinist
 
 With the 152.5M baseline pretraining verified and fully operational on Grace Blackwell hardware, the laboratory stands at a major strategic juncture. We identify three distinct research paths to push Mirendil-Base from basic structural competence to elite foundation-level coding capabilities:
 
-```
-                                 ┌────────────────────────────────────────────────────────┐
-                                 │       Mirendil-Base Checkpoint (Step 500, PPL 31.29)   │
-                                 └───────────────────────────┬────────────────────────────┘
-                                                             │
-                  ┌──────────────────────────────────────────┼──────────────────────────────────────────┐
-                  ▼                                          ▼                                          ▼
-     ┌─────────────────────────┐               ┌─────────────────────────┐               ┌─────────────────────────┐
-     │         PATH 1          │               │         PATH 2          │               │         PATH 3          │
-     │      The RSI Leap       │               │   Data Quality Upgrade  │               │   WSD vs Cosine Head    │
-     │  Generator-Verifier     │               │   SmolLM 'python-edu'   │               │   Controlled Ablation   │
-     │  Self-Play (RLVR)       │               │   High-Density Corpus   │               │   on Blackwell GB10     │
-     └─────────────────────────┘               └─────────────────────────┘               └─────────────────────────┘
+```mermaid
+flowchart TD
+    Base["<b>Mirendil-Base Checkpoint</b><br/>Step 500 | Val PPL 31.29"]
+    
+    Base --> P1["<b>Path 1: The RSI Leap</b><br/>• Generator-Verifier Self-Play (RLVR)<br/>• 0% Human Seed Policy Distillation<br/>• Verifiable Unit-Test Ground Truth"]
+    Base --> P2["<b>Path 2: Data Quality Upgrade</b><br/>• Educational Corpus (SmolLM / TokenBender)<br/>• High Algorithmic Density Pretraining<br/>• Foundation PPL Collapse"]
+    Base --> P3["<b>Path 3: LR Schedule Ablation</b><br/>• WSD vs. Cosine Decay Head-to-Head<br/>• Optimal Annealing Strategy<br/>• NVIDIA GB10 FLOP Efficiency"]
+
+    style Base fill:#e0e7ff,stroke:#4338ca,stroke-width:2px,color:#1e1b4b
+    style P1 fill:#dcfce7,stroke:#15803d,stroke-width:2px,color:#14532d
+    style P2 fill:#fef3c7,stroke:#b45309,stroke-width:2px,color:#78350f
+    style P3 fill:#f1f5f9,stroke:#64748b,stroke-width:2px,color:#1e293b
 ```
 
 ---
@@ -638,29 +590,25 @@ With the 152.5M baseline pretraining verified and fully operational on Grace Bla
 
 Pretraining teaches a language model *what code looks like*, but it does not teach *how code executes*. To transition from syntax completion to verified algorithmic problem solving, Path 1 deploys **Reinforcement Learning with Verifiable Rewards (RLVR)**.
 
-```
-                  ┌─────────────────────────────────────────────────────────┐
-                  │                 Autonomous Task Generator               │
-                  │   Synthesizes coding challenges & automated unit tests  │
-                  └────────────────────────────┬────────────────────────────┘
-                                               │ Prompt x
-                                               ▼
-                  ┌─────────────────────────────────────────────────────────┐
-                  │               Mirendil-Base Generator                   │
-                  │        Samples K=8 completions via Top-p (0.90)         │
-                  └────────────────────────────┬────────────────────────────┘
-                                               │ Candidate Programs {y_1, ..., y_k}
-                                               ▼
-                  ┌─────────────────────────────────────────────────────────┐
-                  │               Sandboxed Python Verifier                 │
-                  │         Executes tests under isolated sandbox           │
-                  └────────────────────────────┬────────────────────────────┘
-                                               │ Binary Pass/Fail Reward R ∈ {0, 1}
-                                               ▼
-                  ┌─────────────────────────────────────────────────────────┐
-                  │              RLVR Policy Optimization (DPO/PPO)         │
-                  │      Reinforces correct reasoning; penalizes bugs       │
-                  └─────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    TaskGen["<b>Autonomous Task Generator</b><br/>Synthesizes coding challenges & multi-assert unit test suites"]
+    Generator["<b>Mirendil-Base Generator</b><br/>Samples K completions via Top-p (0.90), Temp (0.80)"]
+    Verifier["<b>Sandboxed Python Verifier</b><br/>Isolated execution under 2.0s watchdog limit"]
+    Optimization["<b>RLVR Policy Optimization (WSD / DPO)</b><br/>Reinforces verified solutions (R=1.0); penalizes syntax errors"]
+    Buffer[("<b>Experience Replay Buffer</b><br/>Gold Verified Solutions + Baseline Tokens")]
+
+    TaskGen -->|"Prompt Specification x"| Generator
+    Generator -->|"Candidate Programs {y_1, ..., y_k}"| Verifier
+    Verifier -->|"Binary Reward R ∈ {0, 1}<br/>AST & Traceback Classification"| Buffer
+    Buffer -->|"90/10 Replay Mix"| Optimization
+    Optimization -->|"Weights Updated: M_{i+1}"| Generator
+
+    style TaskGen fill:#f1f5f9,stroke:#475569,stroke-width:2px,color:#0f172a
+    style Generator fill:#e0e7ff,stroke:#4338ca,stroke-width:2px,color:#1e1b4b
+    style Verifier fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f
+    style Buffer fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#1e3a8a
+    style Optimization fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d
 ```
 
 #### The Architecture of the RSI Loop:
@@ -677,21 +625,14 @@ Pretraining teaches a language model *what code looks like*, but it does not tea
 
 As the foundational cornerstone of the RSI execution engine, we constructed and verified the **45-Problem Foundation Coding Challenge Bank** stored at `data/rsi/problem_bank.json`.
 
-```
-                        THE 45-PROBLEM RSI CHALLENGE BANK
-                        
-   ┌───────────────────────┬──────────────┬──────────────────────────────────────────┐
-   │ Category              │ Count        │ Representative Algorithmic Tasks         │
-   ├───────────────────────┼──────────────┼──────────────────────────────────────────┤
-   │ 1. Strings            │ 10 Tasks     │ Palindromes, anagrams, compression, RLE  │
-   │ 2. Math & Numbers     │ 10 Tasks     │ Primality, GCD, Fibonacci, Armstrong     │
-   │ 3. Lists & Arrays     │ 10 Tasks     │ Deduplication, rotate, chunk, 2nd-max    │
-   │ 4. Dictionaries       │  5 Tasks     │ Freq counter, key invert, thresholding   │
-   │ 5. Algorithms         │ 10 Tasks     │ Binary search, Two-Sum, Kadane, Caesar   │
-   ├───────────────────────┼──────────────┼──────────────────────────────────────────┤
-   │ TOTAL VERIFIED        │ 45 Tasks     │ 100% Canonical Pass Rate (Multi-Assert)  │
-   └───────────────────────┴──────────────┴──────────────────────────────────────────┘
-```
+| Category | Problem Count | Representative Algorithmic Tasks |
+| :--- | :---: | :--- |
+| **1. Strings** | 10 Tasks | Palindromes, anagrams, string compression, run-length encoding |
+| **2. Math & Numbers** | 10 Tasks | Primality test, GCD, Fibonacci sequence, Armstrong numbers |
+| **3. Lists & Arrays** | 10 Tasks | Deduplication, list rotation, chunking, second maximum |
+| **4. Dictionaries** | 5 Tasks | Frequency counter, key inversion, threshold filtering |
+| **5. Algorithms** | 10 Tasks | Binary search, Two-Sum, Kadane's maximum subarray, Caesar cipher |
+| **Total Verified** | **45 Tasks** | **100% Canonical Pass Rate across multi-assertion test suites** |
 
 ##### 1. The Strict JSON Schema
 Every challenge in `problem_bank.json` adheres to a strict five-key schema engineered for automated evaluation and verification:
@@ -766,30 +707,32 @@ Our 45-Problem Challenge Bank mathematically inoculates the verifier against hol
 
 With the problem bank verified, we implemented and validated the second pillar of the RSI engine: **The Autonomous Self-Play Candidate Generator (`src/rsi/generator.py`)** with dual-stream real-time telemetry.
 
-```
-                        DUAL-STREAM RSI TELEMETRY PIPELINE
-                        
-                      ┌─────────────────────────────────┐
-                      │    Mirendil-Base DGX Checkpoint │
-                      └────────────────┬────────────────┘
-                                       │ Generates K=5 Candidates
-                                       ▼
-                      ┌─────────────────────────────────┐
-                      │    Sandboxed Subprocess Verifier│
-                      │    (2.0s Timeout Execution)     │
-                      └────────────────┬────────────────┘
-                                       │ Evaluated Completions + Tracebacks
-                   ┌───────────────────┴───────────────────┐
-                   ▼                                       ▼
-      [ STREAM 1: LOCAL DISK ARTIFACTS ]      [ STREAM 2: WEIGHTS & BIASES CLOUD ]
-      • data/rsi/all_candidates.jsonl          • Scalar Metrics Dashboard:
-        (Complete unpruned audit log;           - eval/pass_at_1
-         vital for DPO negative pairs)          - eval/pass_at_k
-      • data/rsi/verified_solutions.jsonl       - eval/syntax_error_rate
-        (Gold accepted code solutions;          - eval/assertion_error_rate
-         training data for M_{i+1})             - eval/verified_solutions_count
-                                               • Interactive wandb.Table:
-                                                 (Inspecting prompts, code, traces)
+```mermaid
+flowchart TD
+    Model["<b>Mirendil Checkpoint M_i</b><br/>NVIDIA DGX GB10 Inference"]
+    Sandbox["<b>Sandboxed Subprocess Verifier</b><br/>2.0s Watchdog Execution | Memory Capped"]
+    
+    Model -->|"K Rollout Completions"| Sandbox
+    Sandbox -->|"Completions + Tracebacks + Verdicts"| Split{{"Dual Telemetry Dispatcher"}}
+    
+    subgraph Stream1["Stream 1: Local Disk Artifacts"]
+        AllCand["<b>all_candidates.jsonl</b><br/>• Complete unpruned generation audit log<br/>• Negative pairs for DPO / failure analysis"]
+        GoldSol["<b>verified_solutions.jsonl</b><br/>• Gold accepted code solutions (R=1.0)<br/>• Distillation dataset for Model M_{i+1}"]
+    end
+    
+    subgraph Stream2["Stream 2: Weights & Biases Cloud"]
+        Scalars["<b>Real-Time Scalar Metrics</b><br/>• eval/pass_at_1 & eval/pass_at_k<br/>• eval/syntax_error_rate (-93% collapse)<br/>• eval/verified_solutions_count"]
+        WandbTable["<b>Interactive W&B Table</b><br/>• Prompts, raw code, AST tracebacks<br/>• Domain & task-level filtering"]
+    end
+
+    Split -->|"JSONL Line Stream"| Stream1
+    Split -->|"REST / HTTPS Telemetry"| Stream2
+
+    style Model fill:#e0e7ff,stroke:#4338ca,stroke-width:2px,color:#1e1b4b
+    style Sandbox fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f
+    style Split fill:#f1f5f9,stroke:#64748b,stroke-width:2px,color:#0f172a
+    style Stream1 fill:#eff6ff,stroke:#3b82f6,stroke-width:1.5px,color:#1e3a8a
+    style Stream2 fill:#fdf4ff,stroke:#c026d3,stroke-width:1.5px,color:#701a75
 ```
 
 ##### 1. Dual-Stream Telemetry Architecture
@@ -826,29 +769,31 @@ The dual-telemetry generator was verified live on the DGX Spark GB10 cluster nod
 
 To extract deep behavioral insights from the self-play exploration phase, we authored and deployed **Notebook 11: RSI Self-Play Log Analysis, Failure Taxonomy & SQL Telemetry** (`notebooks/11_selfplay_analysis.ipynb`, 239 KB), mirrored directly into Google Drive (`D:\D\Google Drive\RSI_Pretraining_Lab\11_selfplay_analysis.ipynb`).
 
-```
-                    NOTEBOOK 11: SQL TELEMETRY & ERROR TAXONOMY
-                    
-             ┌────────────────────────────────────────────────────────┐
-             │       Raw Append-Only Log: all_candidates.jsonl        │
-             │           (66 Evaluated Candidate Solutions)           │
-             └───────────────────────────┬────────────────────────────┘
-                                         │
-                                         ▼
-             ┌────────────────────────────────────────────────────────┐
-             │              Zero-Copy DuckDB Query Engine             │
-             │      Vectorized SIMD C++ Scan on Unstructured JSONL     │
-             └─────────────┬───────────────────────────┬──────────────┘
-                           │                           │
-                           ▼                           ▼
-        ┌────────────────────────────────────┐ ┌────────────────────────────────────┐
-        │      Behavioral Error Taxonomy     │ │     Runaway Length Distribution    │
-        │  • Syntax Errors:    65.2% (43)    │ │  • Matplotlib Publication Charts   │
-        │  • Assertion Errors: 12.1%  (8)    │ │  • Boxplot Latency & Char Lengths  │
-        │  • Name/Scope Errors:12.1%  (8)    │ │  • Subprocess Latency: 11.8 ms/test│
-        │  • Runtime Errors:    7.6%  (5)    │ │  • Pass@1 vs Pass@K Aggregations   │
-        │  • Type Errors:       3.0%  (2)    │ │  • Qualitative Prompt Deep-Dives   │
-        └────────────────────────────────────┘ └────────────────────────────────────┘
+```mermaid
+flowchart TD
+    RawLog[("<b>Raw Append-Only Log</b><br/>all_candidates.jsonl<br/>Evaluated Self-Play Candidate Rollouts")]
+    DuckDB["<b>Zero-Copy DuckDB Query Engine</b><br/>Vectorized SIMD C++ Scan on Unstructured JSONL<br/><code>SELECT * FROM read_json_auto(...)</code>"]
+    
+    subgraph Taxonomy["Behavioral Error Taxonomy"]
+        Syntax["<b>Syntax Errors: 65.2% (43)</b><br/>Grammar collapse & truncated tokens"]
+        Assert["<b>Assertion Errors: 12.1% (8)</b><br/>Semantic near-misses (valid syntax)"]
+        Name["<b>Name/Scope Errors: 12.1% (8)</b><br/>Scope hallucination (self, missing imports)"]
+        Runtime["<b>Runtime / Type: 10.6% (7)</b><br/>Index errors & signature mismatches"]
+    end
+    
+    subgraph Analytics["Statistical Visualizations"]
+        Charts["<b>Matplotlib Publication Visuals</b><br/>• Error category distribution bars<br/>• Pass@1 vs. Pass@K aggregate curves"]
+        Latency["<b>Execution Profiles & Latency</b><br/>• Subprocess latency: 11.8 ms / test<br/>• Runaway code length boxplots"]
+    end
+
+    RawLog --> DuckDB
+    DuckDB --> Taxonomy
+    DuckDB --> Analytics
+
+    style RawLog fill:#f1f5f9,stroke:#64748b,stroke-width:2px,color:#0f172a
+    style DuckDB fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f
+    style Taxonomy fill:#fee2e2,stroke:#ef4444,stroke-width:1.5px,color:#7f1d1d
+    style Analytics fill:#eff6ff,stroke:#3b82f6,stroke-width:1.5px,color:#1e3a8a
 ```
 
 ##### 1. Zero-Copy ANSI SQL Telemetry via DuckDB
@@ -890,34 +835,36 @@ def multiply(a: int, b: int) -> int:
 
 The laboratory achieved its crowning Recursive Self-Improvement milestone: **the first closed-loop policy distillation from $M_0$ to $M_1$**. By combining accepted self-play solutions with pretraining tokens in an Experience Replay buffer, the fine-tuned model achieved a remarkable leap in algorithmic capabilities and an unprecedented collapse in syntax errors.
 
-```
-                   THE RSI CLOSED-LOOP DISTILLATION PIPELINE (M_0 -> M_1)
-                   
-          ┌───────────────────────────────┐        ┌───────────────────────────────┐
-          │  Codeparrot-Clean Base Shards │        │ Verified Unit-Test Solutions  │
-          │         (90% Weight)          │        │  (10% Weight: data/rsi/*.bin) │
-          └───────────────┬───────────────┘        └───────────────┬───────────────┘
-                          │                                        │
-                          └───────────────────┬────────────────────┘
-                                              ▼
-                             ┌──────────────────────────────────┐
-                             │  90/10 Experience Replay Shard   │
-                             │     (train_shard_rsi_m1.bin)     │
-                             └────────────────┬─────────────────┘
-                                              ▼
-                             ┌──────────────────────────────────┐
-                             │      NVIDIA DGX GB10 Engine      │
-                             │  50 Fine-Tuning Steps (WSD Schedule)
-                             │       LR: 1.5e-4 | Warmup: 10    │
-                             └────────────────┬─────────────────┘
-                                              │
-                      ┌───────────────────────┴───────────────────────┐
-                      ▼                                               ▼
-         [ METRIC LEAP: PRETRAINING ]                    [ BENCHMARK LEAP: 55 TASKS ]
-         • Val Loss: 3.4435 -> 2.8274                    • Pass@1:   0.0%  -> 10.9%!
-         • Val PPL:   31.29 -> 16.90                     • Pass@5:   0.0%  -> 16.4%!
-         • Real-Time PPL Telemetry                       • Syntax:  60.8%  ->  4.0%! (-93.4%)
-           Logged directly to W&B                        • Verified Harvest: 32 Solutions!
+```mermaid
+flowchart TD
+    BaseShards[("<b>Clean Base Shards</b><br/>90% Anchor Weight<br/>(General Pretraining Tokens)")]
+    VerifiedBuffer[("<b>Verified Solutions</b><br/>10% Policy Weight<br/>(100% Passing Unit-Tested Code)")]
+    ReplayShard[("<b>90/10 Experience Replay Shard</b><br/>train_shard_rsi_m1.bin<br/>Mitigates Catastrophic Forgetting")]
+    Engine["<b>NVIDIA DGX Grace Blackwell GB10</b><br/>50 Distillation Steps | WSD Schedule<br/>Peak LR: 1.5e-4 | FlashAttention-2"]
+    
+    subgraph PretrainLeap["Pretraining Metric Surge"]
+        ValLoss["<b>Validation Loss</b><br/>3.4435 ──> 2.8274"]
+        ValPPL["<b>Validation Perplexity</b><br/>31.29 ──> 16.90 (-46.0%)"]
+    end
+
+    subgraph BenchmarkLeap["Benchmark Evaluation Surge (55 Tasks)"]
+        Pass1["<b>Pass@1 Accuracy</b><br/>0.0% ──> 10.9% (+10.9% absolute)"]
+        Pass5["<b>Pass@5 Discovery</b><br/>0.0% ──> 16.4%"]
+        SyntaxCollapse["<b>Syntax Error Rate</b><br/>60.8% ──> 4.0% (-93.4% relative collapse!)"]
+    end
+
+    BaseShards --> ReplayShard
+    VerifiedBuffer --> ReplayShard
+    ReplayShard --> Engine
+    Engine --> PretrainLeap
+    Engine --> BenchmarkLeap
+
+    style BaseShards fill:#f1f5f9,stroke:#64748b,stroke-width:1.5px,color:#0f172a
+    style VerifiedBuffer fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px,color:#14532d
+    style ReplayShard fill:#e0e7ff,stroke:#4338ca,stroke-width:2px,color:#1e1b4b
+    style Engine fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f
+    style PretrainLeap fill:#eff6ff,stroke:#3b82f6,stroke-width:1.5px,color:#1e3a8a
+    style BenchmarkLeap fill:#f0fdf4,stroke:#22c55e,stroke-width:1.5px,color:#15803d
 ```
 
 ##### 1. The 90/10 Experience Replay Shard Architecture
@@ -959,50 +906,25 @@ We evaluated the newly distilled $M_1$ model against the un-tuned $M_0$ baseline
 
 With the emergence of verified algorithmic competence in Model $M_1$, the laboratory achieved the core theoretical objective of the Mirendil project: **the launch and completion of Generation 2 ($M_1 \to M_2$), a true autonomous Recursive Self-Improvement cycle requiring zero human code and zero synthetic seed bootstrapping.**
 
-```
-                     GENERATION 2: THE AUTONOMOUS RSI FLYWHEEL
-                     
-           ┌────────────────────────────────────────────────────────┐
-           │                     Model M_1                          │
-           │       (Distilled 152.5M Policy, Pass@1 = 10.9%)        │
-           └───────────────────────────┬────────────────────────────┘
-                                       │
-                                       │ 1. Autonomous Self-Play Sampling
-                                       ▼
-           ┌────────────────────────────────────────────────────────┐
-           │            Automated Verifier Sandbox                  │
-           │      Evaluates candidates on 55 challenge problems     │
-           └───────────────────────────┬────────────────────────────┘
-                                       │
-                                       │ 2. Filter Passed Solutions (R = 1.0)
-                                       ▼
-           ┌────────────────────────────────────────────────────────┐
-           │           100% Machine-Generated Replay Shard          │
-           │    train_shard_rsi_m2.bin (4M tokens, 90/10 mix)       │
-           │    • 32 Verified Solutions Harvested                   │
-           │    • 0 Lines of Human Code / 0 Canonical Seeds         │
-           │    • 90% Anchored CodeParrot + 10% Model-Authored Code │
-           └───────────────────────────┬────────────────────────────┘
-                                       │
-                                       │ 3. Policy Distillation (50 Steps)
-                                       ▼
-           ┌────────────────────────────────────────────────────────┐
-           │              NVIDIA DGX Blackwell GB10                 │
-           │   Model M_2 Saved: checkpoints/152m_rsi_m2/best_model  │
-           │   Train Loss: 3.0016 (PPL 20.12) | Val Loss: 2.9562    │
-           │           W&B Run: runs/495yt8cp (Completed)           │
-           └───────────────────────────┬────────────────────────────┘
-                                       │
-                                       │ 4. 55-Problem Benchmark Eval
-                                       ▼
-           ┌────────────────────────────────────────────────────────┐
-           │             Model M_2 Benchmark Evaluation             │
-           │  • Pass@1: 14.5% (8/55 Solved on Attempt #1, +33.0% rel)│
-           │  • Pass@5: 16.4% (9/55 Solved)                         │
-           │  • First-Attempt Mastery on Tasks 1, 2, 3, 4, 6, 7, 8, 10
-           │  • Total Verified Solutions: 35 Harvested              │
-           │  • W&B Eval Dashboard: runs/a9hepg9w (Completed)        │
-           └────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    M1["<b>Model M_1 (Distilled 152.5M Policy)</b><br/>Pass@1 = 10.9% | Pass@5 = 16.4%"]
+    Sandbox["<b>Automated Verifier Sandbox</b><br/>Evaluates candidates across 55 challenge problems"]
+    Harvest[("<b>100% Machine-Generated Replay Shard</b><br/>train_shard_rsi_m2.bin (4M tokens, 90/10 mix)<br/>• 32 Verified Solutions Harvested<br/>• 0 Lines of Human Code / 0 Canonical Seeds<br/>• Model-authored algorithmic logic")]
+    DGX["<b>NVIDIA DGX Blackwell GB10 Distillation</b><br/>50 WSD Steps | LR 1.5e-4<br/>Checkpoints: checkpoints/152m_rsi_m2/best_model.pt<br/>Val Loss: 2.9562 (W&B: runs/495yt8cp)"]
+    M2["<b>Model M_2 Benchmark Evaluation</b><br/>• Pass@1: 14.5% (8/55 Solved on Attempt #1, +33.0% relative)<br/>• Pass@5: 16.4% (9/55 Solved)<br/>• First-Attempt Mastery on Tasks 1, 2, 3, 4, 6, 7, 8, 10<br/>• Total Verified Solutions: 35 Harvested"]
+
+    M1 -->|"1. Autonomous Self-Play Sampling (K=5, T=0.80)"| Sandbox
+    Sandbox -->|"2. Multi-Assert Unit-Test Filter (R=1.0)"| Harvest
+    Harvest -->|"3. Policy Distillation (50 Steps)"| DGX
+    DGX -->|"4. Checkpoint Promotion & Evaluation"| M2
+    M2 -.->|"Autonomous Flywheel Next Generation (M_2 ──> M_3)"| M1
+
+    style M1 fill:#e0e7ff,stroke:#4338ca,stroke-width:2px,color:#1e1b4b
+    style Sandbox fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f
+    style Harvest fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#1e3a8a
+    style DGX fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d
+    style M2 fill:#fdf4ff,stroke:#c026d3,stroke-width:2px,color:#701a75
 ```
 
 ##### 1. The Autonomous Milestone: 0% Human Code, 100% Self-Play
