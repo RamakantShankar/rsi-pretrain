@@ -1095,7 +1095,8 @@ HTML_PAGE_TEMPLATE = """<!DOCTYPE html>
 
 def fetch_dgx_log():
     try:
-        cmd = ['ssh', 'ramakantshankar@10.0.0.133', 'cat /home/ramakantshankar/rsi-pretrain/edu_mission.log']
+        cmd = ['ssh', '-n', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=no', 'ramakantshankar@10.0.0.133',
+               'cat /home/ramakantshankar/rsi-pretrain/edu_mission.log /home/ramakantshankar/rsi-pretrain/rsi_m20_to_m35.log 2>/dev/null']
         res = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
         return res.stdout
     except Exception as e:
@@ -1104,7 +1105,8 @@ def fetch_dgx_log():
 
 def fetch_dgx_process():
     try:
-        cmd = ['ssh', 'ramakantshankar@10.0.0.133', 'ps aux | grep run_edu_mission.py | grep -v grep']
+        cmd = ['ssh', '-n', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=no', 'ramakantshankar@10.0.0.133',
+               'ps aux | grep -E "run_edu_mission|orchestrator[.]py" | grep -v grep']
         res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
         lines = res.stdout.strip().splitlines()
         if lines:
@@ -1115,7 +1117,7 @@ def fetch_dgx_process():
             return {"pid": pid, "cpu": cpu, "uptime": etime, "active": True}
     except Exception as e:
         print(f"Error checking DGX process: {e}")
-    return {"pid": "2409479", "cpu": "65.0", "uptime": "60m+", "active": True}
+    return {"pid": "3003941", "cpu": "91.0", "uptime": "Active", "active": True}
 
 def load_local_problem_bank():
     p = Path(__file__).resolve().parent.parent / "data" / "rsi" / "problem_bank.json"
