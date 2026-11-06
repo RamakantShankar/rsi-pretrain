@@ -1102,19 +1102,9 @@ def load_verified_solutions():
     return solutions_by_task
 
 def parse_log_cycles(text):
+    from datetime import datetime, timedelta
     cycle_matches = list(re.finditer(r'### AUTONOMOUS RSI CYCLE: GENERATION M_(\d+) -> M_(\d+) ###', text))
     cycles = []
-
-    # Map timestamps from checkpoints or log
-    timestamps = [
-        "Nov 05, 2026 16:14 PST",
-        "Nov 06, 2026 04:12 UTC",
-        "Nov 06, 2026 04:28 UTC",
-        "Nov 06, 2026 04:45 UTC",
-        "Nov 06, 2026 05:06 UTC",
-        "Nov 06, 2026 05:14 UTC",
-        "Nov 06, 2026 05:32 UTC",
-    ]
 
     for i, m in enumerate(cycle_matches):
         m_from = m.group(1)
@@ -1139,7 +1129,17 @@ def parse_log_cycles(text):
         else:
             verdict = "COMPLETED"
 
-        ts = timestamps[min(i, len(timestamps) - 1)]
+        # Dynamically compute exact local PST timestamp (UTC - 8h)
+        wb_timestamps = re.findall(r'run-(\d{8}_\d{6})-', block)
+        if wb_timestamps:
+            try:
+                utc_dt = datetime.strptime(wb_timestamps[-1], '%Y%m%d_%H%M%S')
+                pst_dt = utc_dt - timedelta(hours=8)
+                ts = pst_dt.strftime('%b %d, %Y %I:%M:%S %p PST')
+            except Exception:
+                ts = datetime.now().strftime('%b %d, %Y %I:%M:%S %p PST')
+        else:
+            ts = datetime.now().strftime('%b %d, %Y %I:%M:%S %p PST')
 
         cycles.append({
             "from": m_from,
@@ -1284,8 +1284,8 @@ def main():
 
     html_content = HTML_PAGE_TEMPLATE.format(
         gpu_status=f"PID {proc_info['pid']} &bull; {proc_info['uptime']}",
-        timestamp=datetime.now().strftime("%b %d, %Y %H:%M:%S PST"),
-        run_started_date="Nov 05, 2026 15:18 PST",
+        timestamp=datetime.now().strftime("%b %d, %Y %I:%M:%S %p PST"),
+        run_started_date="Nov 05, 2026 03:18 PM PST",
         active_model=active_model,
         total_generations=len(promoted_cycles),
         model_timestamp=model_timestamp,
