@@ -237,6 +237,18 @@ HTML_PAGE_TEMPLATE = """<!DOCTYPE html>
       border-radius: 12px;
       padding: 24px 28px;
       box-shadow: var(--card-shadow);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }}
+    #taskMatrixCard {{
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      transition: all 0.25s ease;
+    }}
+    #taskMatrixCard.full-width {{
+      grid-column: 1 / -1 !important;
     }}
     .card-title {{
       font-size: 1.15rem;
@@ -334,11 +346,17 @@ HTML_PAGE_TEMPLATE = """<!DOCTYPE html>
     /* 55-Task Matrix Grid */
     .matrix-grid {{
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
       gap: 12px;
-      max-height: 520px;
+      flex: 1 1 auto;
+      min-height: 0;
       overflow-y: auto;
       padding-right: 6px;
+    }}
+    .matrix-grid.full-height {{
+      max-height: none !important;
+      overflow-y: visible !important;
+      flex: none !important;
     }}
     .task-card {{
       background: var(--bg);
@@ -615,10 +633,16 @@ HTML_PAGE_TEMPLATE = """<!DOCTYPE html>
     </div>
 
     <!-- 55 Challenge Task Matrix with Filters & Search -->
-    <div class="card">
+    <div class="card" id="taskMatrixCard">
       <div class="card-title">
-        <span>🧩 55-Task Algorithmic Mastery Matrix</span>
-        <span style="font-size: 0.8rem; color: var(--text-muted);">{mastered_count} Mastered &bull; {developing_count} Dev &bull; {frontier_count} Frontier</span>
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <span>🧩 55-Task Algorithmic Mastery Matrix</span>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">{mastered_count} Mastered &bull; {developing_count} Dev &bull; {frontier_count} Frontier</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button id="heightToggleBtn" class="filter-btn" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 6px;" onclick="toggleMatrixFullHeight()">⛶ Full Height</button>
+          <button id="widthToggleBtn" class="filter-btn" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 6px;" onclick="toggleMatrixFullWidth()">⇲ Full Width</button>
+        </div>
       </div>
 
       <!-- Toolbar -->
@@ -985,6 +1009,25 @@ HTML_PAGE_TEMPLATE = """<!DOCTYPE html>
           card.style.display = 'none';
         }}
       }});
+    }}
+
+    function toggleMatrixFullHeight() {{
+      const grid = document.getElementById('taskMatrix');
+      const btn = document.getElementById('heightToggleBtn');
+      const isFull = grid.classList.toggle('full-height');
+      btn.innerHTML = isFull ? '⇲ Fit Height' : '⛶ Full Height';
+      btn.classList.toggle('active', isFull);
+    }}
+
+    function toggleMatrixFullWidth() {{
+      const card = document.getElementById('taskMatrixCard');
+      const btn = document.getElementById('widthToggleBtn');
+      const isFull = card.classList.toggle('full-width');
+      btn.innerHTML = isFull ? '⇱ Side by Side' : '⇲ Full Width';
+      btn.classList.toggle('active', isFull);
+      if (window.myChart) {{
+        window.myChart.resize();
+      }}
     }}
 
     // Render Trajectory Chart
