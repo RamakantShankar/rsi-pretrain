@@ -1171,18 +1171,19 @@ def main():
     current_pass1 = promoted_cycles[-1]['post_p1'] if promoted_cycles else 1.8
     current_pass5 = promoted_cycles[-1]['post_p5'] if promoted_cycles else 18.2
     model_timestamp = promoted_cycles[-1]['timestamp'] if promoted_cycles else "Nov 05"
-    gold_count = max([c['gold'] for c in cycles] + [len(verified_solutions.get("tier1_01", [])) + 84, 97])
+    total_pool_solutions = sum(len(v) for v in verified_solutions.values())
+    gold_count = total_pool_solutions if total_pool_solutions > 0 else max([c['gold'] for c in cycles] + [97])
     pass1_surge = round(current_pass1 - 1.8, 1)
     pass1_solved_count = round(current_pass1 * 55 / 100)
     solved_count = round(current_pass5 * 55 / 100)
 
     in_flight_cycle = cycles[-1] if cycles else None
-    if in_flight_cycle and in_flight_cycle['verdict'] == 'IN PROGRESS':
+    if in_flight_cycle:
         in_flight_label = f"Generation M_{in_flight_cycle['from']} &rarr; M_{in_flight_cycle['to']}"
-        in_flight_sub = f"Deep sampling on DGX Blackwell (PID {proc_info['pid']})"
+        in_flight_sub = f"Active on DGX Grace Blackwell GB10 (PID {proc_info['pid']})"
     else:
-        in_flight_label = "Generation M_5 &rarr; M_6"
-        in_flight_sub = f"Exploration rollouts in progress (PID {proc_info['pid']})"
+        in_flight_label = "Autonomous Exploration"
+        in_flight_sub = f"Rollouts in progress (PID {proc_info['pid']})"
 
     # Chart data
     chart_labels = ["M_0 (Base)"]
