@@ -16,14 +16,29 @@ from pydantic import BaseModel
 
 from src.model.transformer import TransformerDecoder, ModelConfig
 from src.tokenizer.bpe import CodeTokenizer
-from chat import load_champion_model, generate_response, CHAT_PROMPT_HEADER
+from generate import generate_batch
 
-app = FastAPI(title="Mirendil-152M RSI Chat Portal")
+app = FastAPI(title="Mirendil-152M RSI Champion Chat Portal")
 
 # Global model and tokenizer
 model = None
 tokenizer = None
 device = None
+
+def load_champion_model():
+    dev = "cuda" if torch.cuda.is_available() else "cpu"
+    ckpt_path = "checkpoints/152m_champion_m156.pt"
+    if not Path(ckpt_path).exists():
+        ckpt_path = "checkpoints/v3/152m_rsi_m156/best_model.pt"
+    print(f"Loading champion model from {ckpt_path} on [{dev}]...")
+    ckpt = torch.load(ckpt_path, map_location=dev, weights_only=False)
+    cfg = ckpt.get("config") or ModelConfig()
+    m = TransformerDecoder(cfg).to(dev)
+    m.load_state_dict(ckpt["model_state_dict"])
+    m.eval()
+    tok = CodeTokenizer()
+    print("Champion model ready!")
+    return m, tok, dev
 
 HTML_PAGE = """<!DOCTYPE html>
 <html lang="en">
@@ -324,30 +339,41 @@ def index():
 def generate_api(req: GenerateRequest):
     global model, tokenizer, device
     p = req.prompt.strip()
+    print(f"\n[REQUEST] Prompt: {p!r} | Temp: {req.temperature} | MaxTokens: {req.max_tokens}")
 
-    # Determine if conversational or raw code
-    if p.startswith("def ") or p.startswith("class ") or p.startswith("#"):
-        full_prompt = p
-        stop_tokens = ["<|endoftext|>"]
+    # If prompt is a natural language question, translate into Python docstring format
+    if not (p.startswith("def ") or p.startswith("class ") or p.startswith("#")):
+        clean_desc = p.rstrip(".")
+        import re
+        words = re.findall(r'\b[a-zA-Z]+\b', clean_desc.lower())
+        ignore = {'write', 'a', 'python', 'function', 'to', 'that', 'check', 'if', 'calculate', 'return', 'the', 'of', 'in', 'and', 'for', 'an', 'please'}
+        key_words = [w for w in words if w not in ignore]
+        func_name = "_".join(key_words[:3]) if key_words else "solution"
+        full_prompt = f"def {func_name}(s):\n    \"\"\"{clean_desc}.\"\"\"\n"
     else:
-        full_prompt = CHAT_PROMPT_HEADER.format(query=p)
-        stop_tokens = ["# User:", "<|endoftext|>"]
+        full_prompt = p
+        if not full_prompt.endswith("\n"):
+            full_prompt += "\n"
 
-    ans = generate_response(
+    print(f"[FORMATTED PROMPT FOR 152M MODEL]\n{full_prompt}")
+
+    completions = generate_batch(
         model=model,
         tokenizer=tokenizer,
         prompt=full_prompt,
+        num_samples=1,
         max_new_tokens=req.max_tokens,
-        temperature=req.temperature,
-        stop_tokens=stop_tokens,
-        device=device
+        temperature=max(req.temperature, 0.05),
+        top_p=0.95,
+        device=device,
     )
 
-    if not (p.startswith("def ") or p.startswith("class ")):
-        final_code = ans.strip()
-    else:
-        final_code = p + ans
+    final_code = completions[0]
+    # If the model starts writing a second function, trim it cleanly
+    if "\n\ndef " in final_code[len(full_prompt):]:
+        final_code = full_prompt + final_code[len(full_prompt):].split("\n\ndef ")[0]
 
+    print(f"[MODEL RESPONSE]\n{final_code}\n")
     return JSONResponse({"prompt": req.prompt, "response": final_code})
 
 if __name__ == "__main__":

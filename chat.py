@@ -170,24 +170,35 @@ def run_interactive_chat():
             print("\nModel > Thinking...", end="\r")
 
             if mode == "chat":
-                prompt = CHAT_PROMPT_HEADER.format(query=user_input)
-                response = generate_response(
-                    model, tokenizer, prompt,
-                    max_new_tokens=96,
-                    temperature=0.3,
-                    stop_tokens=["# User:", "<|endoftext|>"]
-                )
+                clean_desc = user_input.rstrip(".")
+                import re
+                words = re.findall(r'\b[a-zA-Z]+\b', clean_desc.lower())
+                ignore = {'write', 'a', 'python', 'function', 'to', 'that', 'check', 'if', 'calculate', 'return', 'the', 'of', 'in', 'and', 'for', 'an', 'please'}
+                key_words = [w for w in words if w not in ignore]
+                func_name = "_".join(key_words[:3]) if key_words else "solution"
+                full_prompt = f"def {func_name}(x):\n    \"\"\"{clean_desc}.\"\"\"\n"
             else:
-                response = generate_response(
-                    model, tokenizer, user_input,
-                    max_new_tokens=80,
-                    temperature=0.2,
-                    stop_tokens=["<|endoftext|>"]
-                )
+                full_prompt = user_input
+                if not full_prompt.endswith("\n"):
+                    full_prompt += "\n"
 
-            # Clean output
-            clean_resp = response.strip()
-            print(f"Model > \n{clean_resp}\n")
+            from generate import generate_batch
+            completions = generate_batch(
+                model=model,
+                tokenizer=tokenizer,
+                prompt=full_prompt,
+                num_samples=1,
+                max_new_tokens=96,
+                temperature=0.2 if mode == "code" else 0.3,
+                top_p=0.95,
+                device=device,
+            )
+
+            final_code = completions[0]
+            if "\n\ndef " in final_code[len(full_prompt):]:
+                final_code = full_prompt + final_code[len(full_prompt):].split("\n\ndef ")[0]
+
+            print(f"Model > \n{final_code.strip()}\n")
 
         except KeyboardInterrupt:
             print("\nSession ended.")
