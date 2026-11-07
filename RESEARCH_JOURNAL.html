@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔬 Mirendil Research Lab Journal &amp; Hypothesis Portal</title>
+  
+  <!-- Highlight.js for Code Highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+
+  <!-- MathJax 3 for Math -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  <!-- Mermaid.js for Vector Architecture Diagrams -->
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      securityLevel: 'loose',
+      flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' }
+    });
+  </script>
+
+  <style>
+    :root {
+      --bg: #090d16;
+      --surface: #111827;
+      --card: #1f2937;
+      --border: #374151;
+      --border-accent: #4f46e5;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --accent-blue: #38bdf8;
+      --accent-green: #34d399;
+      --accent-purple: #c084fc;
+      --accent-amber: #fbbf24;
+      --accent-rose: #f43f5e;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      display: flex;
+    }
+    #journal-main {
+      flex: 1;
+      max-width: 950px;
+      margin: 0 auto;
+      padding: 3rem 2.5rem;
+    }
+    #journal-drawer {
+      width: 380px;
+      min-width: 380px;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .drawer-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.75rem;
+    }
+    .ann-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      font-size: 0.88rem;
+    }
+    .ann-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.4rem;
+    }
+    .ann-author { font-weight: 700; color: #fff; }
+    .ann-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.15rem 0.5rem;
+      border-radius: 12px;
+      border: 1px solid;
+    }
+    .ann-section { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.6rem; }
+    .ann-question { font-style: italic; color: var(--text); margin-bottom: 0.6rem; }
+    .ann-response {
+      background: rgba(56, 189, 248, 0.08);
+      border-left: 3px solid var(--accent-blue);
+      border-radius: 0 4px 4px 0;
+      padding: 0.6rem 0.8rem;
+      margin-top: 0.5rem;
+      font-size: 0.82rem;
+    }
+    .ann-resp-header {
+      font-weight: 700;
+      color: var(--accent-blue);
+      margin-bottom: 0.25rem;
+    }
+    .add-ann-btn {
+      background: var(--accent-blue);
+      color: #000;
+      font-weight: 700;
+      border: none;
+      padding: 0.65rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      transition: opacity 0.2s;
+    }
+    .add-ann-btn:hover { opacity: 0.85; }
+    
+    /* Document Styling */
+    h1 { font-size: 2.2rem; margin-bottom: 0.5rem; color: #fff; }
+    h2 { font-size: 1.5rem; margin: 2.5rem 0 1rem; color: #fff; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h3 { font-size: 1.2rem; margin: 1.75rem 0 0.75rem; color: var(--accent-blue); }
+    p { margin-bottom: 1.25rem; }
+    blockquote {
+      background: var(--surface);
+      border-left: 4px solid var(--accent-purple);
+      padding: 1rem 1.25rem;
+      border-radius: 0 8px 8px 0;
+      margin: 1.5rem 0;
+      font-size: 1.05rem;
+    }
+    table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.92rem; }
+    th, td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); text-align: left; }
+    th { background: rgba(255,255,255,0.04); color: #fff; }
+    pre code { border-radius: 8px; font-family: 'Fira Code', monospace; }
+
+    /* Modal dialog */
+    #ann-modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      width: 90%;
+      max-width: 500px;
+    }
+    .modal-card h3 { color: #fff; margin-bottom: 1rem; }
+    .modal-card textarea {
+      width: 100%;
+      height: 120px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 0.75rem;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      font-family: inherit;
+    }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 0.75rem; }
+  </style>
+</head>
+<body>
+
+  <!-- MAIN DOCUMENT -->
+  <main id="journal-main">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+      <div style="font-size:0.85rem; color:var(--accent-green); font-weight:700;">● LIVE RESEARCH LAB JOURNAL &bull; SUBAGENT SYNCHRONIZED</div>
+      <a href="DASHBOARD.html" target="_blank" style="color:var(--accent-blue); text-decoration:none; font-size:0.85rem; font-weight:600;">📊 Live GPU Dashboard &rarr;</a>
+    </div>
+
+    <h1>🔬 Mirendil Research Lab Journal: Toward a Frontier Small Model</h1>
+<p><strong>Principal Investigator:</strong> Ramakant Shankar<br />
+<strong>Lead Tutor &amp; Engineering Agent:</strong> Antigravity<br />
+<strong>Repository:</strong> <code>https://github.com/RamakantShankar/rsi-pretrain</code><br />
+<strong>Compute Target:</strong> NVIDIA DGX Grace Blackwell GB10 GPU (<code>10.0.0.133</code>)<br />
+<strong>Status:</strong> Phase 5 — Systematic Component-by-Component Optimization  </p>
+<hr />
+<h2>🎯 Executive Mission &amp; Research Thesis</h2>
+<blockquote>
+<p><strong>The Core Thesis:</strong> Large models (7B - 70B) compensate for noisy data and suboptimal architectures with sheer brute force. A tiny model (~150M parameters) has zero margin for waste. By ruthlessly optimizing the <strong>Tokenizer (Embedding Tax)</strong>, <strong>Data Density (Synthetic Textbooks)</strong>, <strong>Parametric Depth/Width</strong>, and <strong>Inference-Time Search (MCTS)</strong>, a 150M-parameter model can match or exceed models 10x its size on algorithmic reasoning.</p>
+</blockquote>
+<div class="mermaid">
+graph LR
+    P1["<b>Pillar 1</b><br>Tokenomics<br>&amp; Vocab Size"] --> P2["<b>Pillar 2</b><br>Data Density<br>&amp; Textbooks"]
+    P2 --> P3["<b>Pillar 3</b><br>Parametric Depth<br>vs. Width"]
+    P3 --> P4["<b>Pillar 4</b><br>Curriculum<br>Annealing"]
+    P4 --> P5["<b>Pillar 5</b><br>Minimalist SFT<br>(Chat Steering)"]
+    P5 --> P6["<b>Pillar 6</b><br>Test-Time<br>Search (MCTS)"]
+
+    style P1 fill:#1e1b4b,stroke:#6366f1,stroke-width:2px;
+    style P2 fill:#064e3b,stroke:#059669,stroke-width:2px;
+    style P3 fill:#451a03,stroke:#d97706,stroke-width:2px;
+    style P4 fill:#1e293b,stroke:#38bdf8,stroke-width:2px;
+    style P5 fill:#4c0519,stroke:#e11d48,stroke-width:2px;
+    style P6 fill:#0f172a,stroke:#34d399,stroke-width:2px;
+</div>
+
+<hr />
+<h2>🗺️ Master Milestone Tracker</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Milestone</th>
+<th style="text-align: left;">Description</th>
+<th style="text-align: center;">Status</th>
+<th style="text-align: center;">Target Metric</th>
+<th style="text-align: left;">Outcome / Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>M0</strong></td>
+<td style="text-align: left;">152M Baseline Pretraining (WSD Schedule)</td>
+<td style="text-align: center;">✅ <strong>VALIDATED</strong></td>
+<td style="text-align: center;">PPL &lt; 12.0</td>
+<td style="text-align: left;">Baseline PPL: 10.24, Pass@1: 1.8%</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>M1</strong></td>
+<td style="text-align: left;">Autonomous Self-Play Lifelong Run (158 Gens)</td>
+<td style="text-align: center;">✅ <strong>VALIDATED</strong></td>
+<td style="text-align: center;">Pass@1 &gt; 50%</td>
+<td style="text-align: left;">Achieved 58.2% Pass@1, 42,738 gold solutions</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>M2</strong></td>
+<td style="text-align: left;">Retrospective &amp; Saturation Analysis</td>
+<td style="text-align: center;">✅ <strong>VALIDATED</strong></td>
+<td style="text-align: center;">Capacity Audit</td>
+<td style="text-align: left;">Confirmed saturation at Gen 158; GPU halted</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>M3</strong></td>
+<td style="text-align: left;">Tokenizer Specialization &amp; Embedding Tax Ablation</td>
+<td style="text-align: center;">🟡 <strong>IN PROGRESS</strong></td>
+<td style="text-align: center;">Vocab: 100k -&gt; 16k</td>
+<td style="text-align: left;">Reclaim 64.4M params; test compression ratio</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>M4</strong></td>
+<td style="text-align: left;">Deep Architecture Reallocation (Depth vs Width)</td>
+<td style="text-align: center;">⚪ <em>PLANNED</em></td>
+<td style="text-align: center;">+50% Depth</td>
+<td style="text-align: left;">Reallocate 64M reclaimed params into 20+ layers</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>M5</strong></td>
+<td style="text-align: left;">Synthetic Textbook Data Engine (Phi-1 Playbook)</td>
+<td style="text-align: center;">⚪ <em>PLANNED</em></td>
+<td style="text-align: center;">Zero-Boilerplate</td>
+<td style="text-align: left;">Curate 100k step-by-step verified execution traces</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>M6</strong></td>
+<td style="text-align: left;">Minimalist SFT &amp; Loss-Masked Chat Alignment</td>
+<td style="text-align: center;">⚪ <em>PLANNED</em></td>
+<td style="text-align: center;">Chat without degradation</td>
+<td style="text-align: left;">Native instruction-following with zero code regression</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>M7</strong></td>
+<td style="text-align: left;">Test-Time Compute &amp; MCTS Search</td>
+<td style="text-align: center;">⚪ <em>PLANNED</em></td>
+<td style="text-align: center;">Unlock 17 Frontier Tasks</td>
+<td style="text-align: left;">Monte Carlo Tree Search to cross 70%+ Pass@1</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>📋 Comprehensive Research Observations Log</h2>
+<h3>Observation Log 1: Phase 1-4 Autoregressive Self-Play (Generations 0 -&gt; 158)</h3>
+<ul>
+<li><strong>What Worked:</strong></li>
+<li><strong>90/10 Replay Mixing:</strong> Blending 90% foundational pretraining data with 10% verified self-play code completely prevented mode collapse.</li>
+<li><strong>Strict Regression Guard ($\Delta \ge -2.0\%$):</strong> Saved the run twice at Generation 5 (Cycle $M_4 \to M_5$) by catching multi-task regressions and rolling back to parent weights.</li>
+<li><strong>Warmup-Stable-Decay (WSD):</strong> Kept learning rate high ($1.2 \times 10^{-3}$) across 158 generations, allowing the model to continuously absorb newly discovered algorithms.</li>
+<li><strong>What Failed &amp; What Didn't:</strong></li>
+<li><strong>Base Model Chat Incompatibility:</strong> Prompting a raw base model with conversational <code># User:</code> wrappers caused complete incoherence. Base models require docstrings and signatures.</li>
+<li><strong>Capacity Wall at Generation 158:</strong> Self-play saturated at 58.2% Pass@1 because a 152M parameter model cannot solve complex multi-step search problems without test-time search.</li>
+</ul>
+<hr />
+<h2>🧪 Current Investigation: Pillar 1 (Tokenomics &amp; Embedding Tax)</h2>
+<h3>The Research Question</h3>
+<p>Can we prune our vocabulary from 100,262 to 16,384 tokens to reclaim 64.4 Million parameters, reinvest those parameters into deeper Transformer layers, and achieve superior algorithmic reasoning under the exact same total parameter budget?</p>
+<h3>The Formal Hypothesis (H1)</h3>
+<blockquote>
+<p>A specialized Python + English BPE tokenizer of vocabulary size $V = 16,384$ will exhibit a minor compression penalty ($\le 1.15\times$ token inflation on code), but will reduce the embedding table from 77.0M down to 12.6M parameters. Reallocating the saved 64.4M parameters into 6 additional Transformer layers (increasing depth from 12 to 18 layers) will increase deterministic Pass@1 by $\ge 4.0\%$ on standard algorithmic benchmarks under identical training FLOPs.</p>
+</blockquote>
+<div class="mermaid">
+graph TD
+    subgraph Tax100k ["Current: 100k Vocab (StarCoder2)"]
+        A1["Embedding Table: 100,262 &times; 768<br><b>77.0M Parameters (50.6%)</b>"]
+        A2["Transformer Trunk: 12 Layers<br><b>75.0M Parameters (49.4%)</b>"]
+    end
+
+    subgraph Tax16k ["Proposed: 16k Vocab (Mirendil-Specialized)"]
+        B1["Embedding Table: 16,384 &times; 768<br><b>12.6M Parameters (8.3%)</b>"]
+        B2["Transformer Trunk: 18-22 Layers<br><b>139.4M Parameters (91.7%)</b>"]
+    end
+
+    style Tax100k fill:#4c0519,stroke:#e11d48,stroke-width:1px;
+    style Tax16k fill:#064e3b,stroke:#059669,stroke-width:2px;
+</div>
+
+<hr />
+<h2>💬 Collaborative Annotations &amp; Open Questions</h2>
+<p><em>This section dynamically records notes, questions, and hypotheses added by Ramakant and Antigravity.</em></p>
+<!-- ANNOTATIONS_TABLE_START -->
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">ID</th>
+<th style="text-align: left;">Section / Topic</th>
+<th style="text-align: center;">Author</th>
+<th style="text-align: left;">Question / Note</th>
+<th style="text-align: center;">Status</th>
+<th style="text-align: left;">Tutor Response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><code>NOTE-01</code></td>
+<td style="text-align: left;">Tokenizer Specialization</td>
+<td style="text-align: center;">Ramakant</td>
+<td style="text-align: left;"><em>Is current tokenizer large because it supports all languages? Would it be a bottleneck in keeping model small? Should we just focus on English?</em></td>
+<td style="text-align: center;">✅ <strong>ANSWERED</strong></td>
+<td style="text-align: left;">Yes, 100k vocab consumes 77M params (50.6% of model!). Pruning to 16k reclaims 64.4M params for network depth.</td>
+</tr>
+<tr>
+<td style="text-align: center;"><code>NOTE-02</code></td>
+<td style="text-align: left;">Data Curation</td>
+<td style="text-align: center;">Ramakant</td>
+<td style="text-align: left;"><em>How do we identify right data to make our model capable from all angles? How do we curate it really specific avoiding all noise?</em></td>
+<td style="text-align: center;">🟡 <strong>IN PROGRESS</strong></td>
+<td style="text-align: left;">We will implement Pillar 2: Synthetic Textbook Curation using execution state traces and high-density algorithmic docstrings.</td>
+</tr>
+</tbody>
+</table>
+<!-- ANNOTATIONS_TABLE_END -->
+  </main>
+
+  <!-- COLLABORATIVE ANNOTATIONS DRAWER -->
+  <aside id="journal-drawer">
+    <div class="drawer-title">
+      <span>💬 Research Notes &amp; Q&amp;A</span>
+      <span style="font-size:0.8rem; background:rgba(56,189,248,0.2); color:var(--accent-blue); padding:0.15rem 0.5rem; border-radius:10px;">2 Active</span>
+    </div>
+
+    <button class="add-ann-btn" onclick="openAnnotationModal()">
+      <span>➕ Add Question / Annotation</span>
+    </button>
+
+    <div id="annotations-list" style="margin-top:1rem;">
+      
+        <div class="ann-card" id="NOTE-01">
+          <div class="ann-header">
+            <span class="ann-author">👤 Ramakant</span>
+            <span class="ann-badge" style="border-color:var(--accent-green); color:var(--accent-green);">ANSWERED</span>
+          </div>
+          <div class="ann-section">📌 Pillar 1: Tokenomics &bull; <small>2026-11-07 05:16 PST</small></div>
+          <div class="ann-question">"Is current tokenizer large because it supports all languages? Would it be a bottleneck in keeping model small? Should we just focus on English?"</div>
+          
+            <div class="ann-response">
+              <div class="ann-resp-header">🎓 Antigravity (Tutor Response):</div>
+              <div>Yes! The 100,262 token vocabulary consumes 77.0M parameters—over 50.6% of our entire 152M model budget. Pruning to a specialized 16k Python+English tokenizer reclaims 64.4M parameters, allowing us to increase Transformer depth from 12 to 20+ layers under the exact same parameter budget.</div>
+            </div>
+            
+        </div>
+        
+        <div class="ann-card" id="NOTE-02">
+          <div class="ann-header">
+            <span class="ann-author">👤 Ramakant</span>
+            <span class="ann-badge" style="border-color:var(--accent-amber); color:var(--accent-amber);">IN_PROGRESS</span>
+          </div>
+          <div class="ann-section">📌 Pillar 2: Data Density &bull; <small>2026-11-07 05:16 PST</small></div>
+          <div class="ann-question">"How do we identify right data to make our model capable from all angles? How do we curate it really specific avoiding all noise? Highest quality possible."</div>
+          
+            <div class="ann-response">
+              <div class="ann-resp-header">🎓 Antigravity (Tutor Response):</div>
+              <div>We will follow the Microsoft Phi-1 playbook: filter raw code using heuristic AST density filters, prune out boilerplate configuration scripts, and generate synthetic algorithmic 'textbooks' with explicit variable-state step tracing.</div>
+            </div>
+            
+        </div>
+        
+    </div>
+  </aside>
+
+  <!-- ANNOTATION MODAL -->
+  <div id="ann-modal">
+    <div class="modal-card">
+      <h3>💬 Add Annotation or Question</h3>
+      <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">
+        Your question will be appended to <code>annotations.json</code> and <code>RESEARCH_JOURNAL.md</code> for the agent to review and answer:
+      </p>
+      <input type="text" id="ann-topic" placeholder="Topic or Pillar (e.g. Pillar 1: Tokenizer)" style="width:100%; background:var(--card); border:1px solid var(--border); color:#fff; padding:0.5rem 0.75rem; border-radius:6px; margin-bottom:0.75rem;">
+      <textarea id="ann-text" placeholder="Type your observation, hypothesis, or question here..."></textarea>
+      <div class="modal-actions">
+        <button onclick="closeAnnotationModal()" style="background:var(--card); border:1px solid var(--border); color:#fff; padding:0.5rem 1rem; border-radius:6px; cursor:pointer;">Cancel</button>
+        <button onclick="saveAnnotation()" class="add-ann-btn">Post Annotation &check;</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    hljs.highlightAll();
+
+    function openAnnotationModal() {
+      document.getElementById('ann-modal').style.display = 'flex';
+    }
+    function closeAnnotationModal() {
+      document.getElementById('ann-modal').style.display = 'none';
+    }
+
+    function saveAnnotation() {
+      const topic = document.getElementById('ann-topic').value.trim() || 'General';
+      const text = document.getElementById('ann-text').value.trim();
+      if (!text) return;
+
+      const newAnn = {
+        id: 'NOTE-' + String(Date.now()).slice(-4),
+        section: topic,
+        author: 'Ramakant',
+        timestamp: new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }) + ' PST',
+        question: text,
+        status: 'OPEN',
+        response: 'Pending Tutor Review...'
+      };
+
+      // Save locally in localStorage
+      let localAnns = JSON.parse(localStorage.getItem('user_annotations') || '[]');
+      localAnns.unshift(newAnn);
+      localStorage.setItem('user_annotations', JSON.stringify(localAnns));
+
+      alert('Annotation added to local session! In the next turn, Antigravity or the Chronicler subagent will formally ingest it into annotations.json and answer it.');
+      closeAnnotationModal();
+      location.reload();
+    }
+  </script>
+</body>
+</html>
