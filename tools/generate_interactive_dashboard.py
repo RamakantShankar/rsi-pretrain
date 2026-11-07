@@ -1096,7 +1096,7 @@ HTML_PAGE_TEMPLATE = """<!DOCTYPE html>
 def fetch_dgx_log():
     try:
         cmd = ['ssh', '-n', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=no', 'ramakantshankar@10.0.0.133',
-               'cat /home/ramakantshankar/rsi-pretrain/edu_mission.log /home/ramakantshankar/rsi-pretrain/rsi_m20_to_m35.log 2>/dev/null']
+               'cat /home/ramakantshankar/rsi-pretrain/edu_mission.log $(ls -v /home/ramakantshankar/rsi-pretrain/rsi_m*.log 2>/dev/null) 2>/dev/null']
         res = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
         return res.stdout
     except Exception as e:
