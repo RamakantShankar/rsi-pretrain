@@ -1,15 +1,8 @@
 #!/usr/bin/env python3
 """
-Mirendil Research Lab Journal Compiler
-Builds the standalone, interactive RESEARCH_JOURNAL.html application from
-RESEARCH_JOURNAL.md and annotations.json.
-
-Features:
-  - Interactive click-to-annotate and highlight-to-question system
-  - Collapsible side-drawer for user questions and tutor responses
-  - Crisp Mermaid.js vector diagrams (strictly zero ASCII art)
-  - Dark/light responsive laboratory styling
-  - Automatic bidirectional sync to Google Drive mirror
+Mirendil Research Lab Journal Compiler with Inline Text Highlighting & Threaded Discussions.
+Translates RESEARCH_JOURNAL.md and annotations.json into a rich, interactive HTML
+lab notebook where users can highlight any word/sentence and start conversation threads.
 """
 
 import os
@@ -18,6 +11,7 @@ import json
 import shutil
 from pathlib import Path
 import markdown
+import re
 
 def build_journal_html():
     root_dir = Path("M:/Rama/Study/llm/LLM/RSI")
@@ -26,18 +20,15 @@ def build_journal_html():
     drive_dir = Path("D:/D/Google Drive/RSI_Pretraining_Lab")
 
     md_text = md_path.read_text(encoding="utf-8") if md_path.exists() else "# Research Journal"
-    annotations = json.loads(ann_path.read_text(encoding="utf-8")) if ann_path.exists() else []
+    threads = json.loads(ann_path.read_text(encoding="utf-8")) if ann_path.exists() else []
 
-    # Convert markdown to HTML with tables, code blocks, etc.
-    # Replace mermaid blocks with div.mermaid
+    # Replace mermaid blocks
     mermaid_blocks = []
     def mermaid_repl(match):
         mermaid_blocks.append(match.group(1))
         return f"<!--MERMAID_PLACEHOLDER_{len(mermaid_blocks)-1}-->"
 
-    import re
     cleaned_md = re.sub(r'```mermaid\s*\n(.*?)\n```', mermaid_repl, md_text, flags=re.DOTALL)
-    
     html_body = markdown.markdown(cleaned_md, extensions=['tables', 'fenced_code'])
 
     for idx, block in enumerate(mermaid_blocks):
@@ -46,27 +37,41 @@ def build_journal_html():
             f'<div class="mermaid">\n{block}\n</div>'
         )
 
-    # Render annotations cards
-    annotations_cards_html = ""
-    for ann in annotations:
-        status_color = "var(--accent-green)" if ann.get("status") == "ANSWERED" else "var(--accent-amber)"
-        resp_html = ""
-        if ann.get("response"):
-            resp_html = f"""
-            <div class="ann-response">
-              <div class="ann-resp-header">🎓 Antigravity (Tutor Response):</div>
-              <div>{ann['response']}</div>
+    # Render threaded conversation cards
+    threads_html = ""
+    for thread in threads:
+        status_color = "var(--accent-green)" if thread.get("status") == "ANSWERED" else "var(--accent-amber)"
+        messages_html = ""
+        for msg in thread.get("messages", []):
+            is_tutor = msg.get("role") == "tutor"
+            bubble_class = "tutor-bubble" if is_tutor else "user-bubble"
+            author_label = f"🎓 {msg.get('author')}" if is_tutor else f"👤 {msg.get('author')}"
+            messages_html += f"""
+            <div class="thread-msg {bubble_class}">
+              <div class="msg-header">
+                <strong>{author_label}</strong>
+                <small>{msg.get('timestamp', '')}</small>
+              </div>
+              <div class="msg-text">{msg.get('text', '')}</div>
             </div>
             """
-        annotations_cards_html += f"""
-        <div class="ann-card" id="{ann.get('id', '')}">
-          <div class="ann-header">
-            <span class="ann-author">👤 {ann.get('author', 'User')}</span>
-            <span class="ann-badge" style="border-color:{status_color}; color:{status_color};">{ann.get('status', 'OPEN')}</span>
+
+        threads_html += f"""
+        <div class="thread-card" id="{thread.get('thread_id')}" data-thread-id="{thread.get('thread_id')}">
+          <div class="thread-card-header">
+            <span class="thread-section">📌 {thread.get('section', 'General')}</span>
+            <span class="thread-status" style="border-color:{status_color}; color:{status_color};">{thread.get('status', 'OPEN')}</span>
           </div>
-          <div class="ann-section">📌 {ann.get('section', 'General')} &bull; <small>{ann.get('timestamp', '')}</small></div>
-          <div class="ann-question">"{ann.get('question', '')}"</div>
-          {resp_html}
+          <div class="thread-quote" onclick="scrollToHighlight('{thread.get('thread_id')}')">
+            “{thread.get('highlighted_text', '')}”
+          </div>
+          <div class="thread-messages">
+            {messages_html}
+          </div>
+          <div class="thread-reply-box">
+            <input type="text" placeholder="Reply to this thread..." class="reply-input" id="reply-input-{thread.get('thread_id')}" onkeydown="if(event.key==='Enter') postReply('{thread.get('thread_id')}')">
+            <button class="reply-btn" onclick="postReply('{thread.get('thread_id')}')">Reply</button>
+          </div>
         </div>
         """
 
@@ -75,14 +80,14 @@ def build_journal_html():
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🔬 Mirendil Research Lab Journal &amp; Hypothesis Portal</title>
+  <title>🔬 Mirendil Research Lab Journal &amp; Inline Discussion Portal</title>
   
   <!-- Highlight.js for Code Highlighting -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
 
-  <!-- MathJax 3 for Math -->
+  <!-- MathJax 3 for Crisp LaTeX -->
   <script>
     window.MathJax = {{
       tex: {{
@@ -120,6 +125,8 @@ def build_journal_html():
       --accent-purple: #c084fc;
       --accent-amber: #fbbf24;
       --accent-rose: #f43f5e;
+      --highlight-bg: rgba(251, 191, 36, 0.25);
+      --highlight-border: #fbbf24;
     }}
     * {{ box-sizing: border-box; margin: 0; padding: 0; }}
     body {{
@@ -131,13 +138,14 @@ def build_journal_html():
     }}
     #journal-main {{
       flex: 1;
-      max-width: 950px;
+      max-width: 900px;
       margin: 0 auto;
       padding: 3rem 2.5rem;
+      user-select: text;
     }}
     #journal-drawer {{
-      width: 380px;
-      min-width: 380px;
+      width: 440px;
+      min-width: 440px;
       background: var(--surface);
       border-left: 1px solid var(--border);
       position: sticky;
@@ -159,188 +167,279 @@ def build_journal_html():
       border-bottom: 1px solid var(--border);
       padding-bottom: 0.75rem;
     }}
-    .ann-card {{
+
+    /* Highlight Styling in Document */
+    mark.user-highlight {{
+      background: var(--highlight-bg);
+      color: inherit;
+      border-bottom: 2px solid var(--highlight-border);
+      border-radius: 2px;
+      padding: 0 2px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }}
+    mark.user-highlight:hover {{
+      background: rgba(251, 191, 36, 0.45);
+    }}
+    mark.active-highlight {{
+      background: rgba(56, 189, 248, 0.4) !important;
+      border-bottom: 2px solid var(--accent-blue) !important;
+    }}
+
+    /* Floating Tooltip Button */
+    #selection-tooltip {{
+      display: none;
+      position: absolute;
+      background: var(--surface);
+      border: 1px solid var(--accent-blue);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      border-radius: 25px;
+      padding: 0.35rem 0.85rem;
+      z-index: 1000;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--accent-blue);
+      align-items: center;
+      gap: 0.4rem;
+      transition: transform 0.15s ease;
+    }}
+    #selection-tooltip:hover {{
+      transform: translateY(-2px);
+      background: var(--card);
+    }}
+
+    /* Thread Cards */
+    .thread-card {{
       background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1rem;
-      margin-bottom: 1rem;
+      border-radius: 10px;
+      padding: 1.15rem;
+      margin-bottom: 1.25rem;
       font-size: 0.88rem;
+      transition: border-color 0.2s;
     }}
-    .ann-header {{
+    .thread-card.focused {{
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);
+    }}
+    .thread-card-header {{
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 0.4rem;
+      margin-bottom: 0.5rem;
     }}
-    .ann-author {{ font-weight: 700; color: #fff; }}
-    .ann-badge {{
+    .thread-section {{ font-size: 0.75rem; font-weight: 700; color: var(--accent-blue); }}
+    .thread-status {{
       font-size: 0.7rem;
       font-weight: 700;
       padding: 0.15rem 0.5rem;
       border-radius: 12px;
       border: 1px solid;
     }}
-    .ann-section {{ font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.6rem; }}
-    .ann-question {{ font-style: italic; color: var(--text); margin-bottom: 0.6rem; }}
-    .ann-response {{
+    .thread-quote {{
+      background: rgba(0,0,0,0.3);
+      border-left: 3px solid var(--accent-amber);
+      padding: 0.5rem 0.75rem;
+      border-radius: 0 6px 6px 0;
+      font-size: 0.82rem;
+      font-style: italic;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+      cursor: pointer;
+    }}
+    .thread-quote:hover {{ color: #fff; }}
+    .thread-messages {{
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      margin-bottom: 0.75rem;
+    }}
+    .thread-msg {{
+      padding: 0.6rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }}
+    .user-bubble {{
+      background: rgba(255,255,255,0.04);
+      border-left: 3px solid #94a3b8;
+    }}
+    .tutor-bubble {{
       background: rgba(56, 189, 248, 0.08);
       border-left: 3px solid var(--accent-blue);
-      border-radius: 0 4px 4px 0;
-      padding: 0.6rem 0.8rem;
+    }}
+    .msg-header {{
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 0.2rem;
+    }}
+    .thread-reply-box {{
+      display: flex;
+      gap: 0.5rem;
       margin-top: 0.5rem;
+    }}
+    .reply-input {{
+      flex: 1;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 0.4rem 0.65rem;
+      border-radius: 6px;
       font-size: 0.82rem;
     }}
-    .ann-resp-header {{
-      font-weight: 700;
-      color: var(--accent-blue);
-      margin-bottom: 0.25rem;
-    }}
-    .add-ann-btn {{
+    .reply-btn {{
       background: var(--accent-blue);
       color: #000;
-      font-weight: 700;
       border: none;
-      padding: 0.65rem 1rem;
+      padding: 0.4rem 0.75rem;
       border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 700;
       cursor: pointer;
-      font-size: 0.88rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.4rem;
-      transition: opacity 0.2s;
     }}
-    .add-ann-btn:hover {{ opacity: 0.85; }}
-    
-    /* Document Styling */
-    h1 {{ font-size: 2.2rem; margin-bottom: 0.5rem; color: #fff; }}
-    h2 {{ font-size: 1.5rem; margin: 2.5rem 0 1rem; color: #fff; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }}
-    h3 {{ font-size: 1.2rem; margin: 1.75rem 0 0.75rem; color: var(--accent-blue); }}
-    p {{ margin-bottom: 1.25rem; }}
+
+    /* Main Typography */
+    h1 {{ font-size: 2.1rem; color: #fff; margin-bottom: 0.75rem; }}
+    h2 {{ font-size: 1.45rem; color: #fff; margin: 2.2rem 0 0.85rem; border-bottom: 1px solid var(--border); padding-bottom: 0.4rem; }}
+    h3 {{ font-size: 1.15rem; color: var(--accent-blue); margin: 1.5rem 0 0.65rem; }}
+    p {{ margin-bottom: 1.15rem; }}
     blockquote {{
       background: var(--surface);
       border-left: 4px solid var(--accent-purple);
-      padding: 1rem 1.25rem;
+      padding: 0.85rem 1.15rem;
       border-radius: 0 8px 8px 0;
-      margin: 1.5rem 0;
-      font-size: 1.05rem;
+      margin: 1.25rem 0;
+      font-size: 1rem;
     }}
-    table {{ width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.92rem; }}
-    th, td {{ padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); text-align: left; }}
+    table {{ width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.9rem; }}
+    th, td {{ padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--border); text-align: left; }}
     th {{ background: rgba(255,255,255,0.04); color: #fff; }}
-    pre code {{ border-radius: 8px; font-family: 'Fira Code', monospace; }}
-
-    /* Modal dialog */
-    #ann-modal {{
-      display: none;
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.7);
-      z-index: 1000;
-      justify-content: center;
-      align-items: center;
-    }}
-    .modal-card {{
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 2rem;
-      width: 90%;
-      max-width: 500px;
-    }}
-    .modal-card h3 {{ color: #fff; margin-bottom: 1rem; }}
-    .modal-card textarea {{
-      width: 100%;
-      height: 120px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      color: #fff;
-      padding: 0.75rem;
-      border-radius: 6px;
-      margin-bottom: 1rem;
-      font-family: inherit;
-    }}
-    .modal-actions {{ display: flex; justify-content: flex-end; gap: 0.75rem; }}
   </style>
 </head>
 <body>
 
+  <!-- FLOATING SELECTION TOOLTIP -->
+  <div id="selection-tooltip" onclick="openCommentFromSelection()">
+    <span>💬 Ask Question / Discuss</span>
+  </div>
+
   <!-- MAIN DOCUMENT -->
-  <main id="journal-main">
+  <main id="journal-main" onmouseup="handleTextSelection(event)">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
-      <div style="font-size:0.85rem; color:var(--accent-green); font-weight:700;">● LIVE RESEARCH LAB JOURNAL &bull; SUBAGENT SYNCHRONIZED</div>
+      <div style="font-size:0.85rem; color:var(--accent-green); font-weight:700;">● LIVE RESEARCH LAB JOURNAL &bull; HIGHLIGHT &amp; DISCUSS ENABLED</div>
       <a href="DASHBOARD.html" target="_blank" style="color:var(--accent-blue); text-decoration:none; font-size:0.85rem; font-weight:600;">📊 Live GPU Dashboard &rarr;</a>
     </div>
 
     {html_body}
   </main>
 
-  <!-- COLLABORATIVE ANNOTATIONS DRAWER -->
+  <!-- CONVERSATIONAL ANNOTATIONS DRAWER -->
   <aside id="journal-drawer">
     <div class="drawer-title">
-      <span>💬 Research Notes &amp; Q&amp;A</span>
-      <span style="font-size:0.8rem; background:rgba(56,189,248,0.2); color:var(--accent-blue); padding:0.15rem 0.5rem; border-radius:10px;">{len(annotations)} Active</span>
+      <span>💬 Discussions ({len(threads)})</span>
+      <span style="font-size:0.75rem; color:var(--text-muted);">Highlight text to start new thread</span>
     </div>
 
-    <button class="add-ann-btn" onclick="openAnnotationModal()">
-      <span>➕ Add Question / Annotation</span>
-    </button>
-
-    <div id="annotations-list" style="margin-top:1rem;">
-      {annotations_cards_html}
+    <div id="threads-container">
+      {threads_html}
     </div>
   </aside>
-
-  <!-- ANNOTATION MODAL -->
-  <div id="ann-modal">
-    <div class="modal-card">
-      <h3>💬 Add Annotation or Question</h3>
-      <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">
-        Your question will be appended to <code>annotations.json</code> and <code>RESEARCH_JOURNAL.md</code> for the agent to review and answer:
-      </p>
-      <input type="text" id="ann-topic" placeholder="Topic or Pillar (e.g. Pillar 1: Tokenizer)" style="width:100%; background:var(--card); border:1px solid var(--border); color:#fff; padding:0.5rem 0.75rem; border-radius:6px; margin-bottom:0.75rem;">
-      <textarea id="ann-text" placeholder="Type your observation, hypothesis, or question here..."></textarea>
-      <div class="modal-actions">
-        <button onclick="closeAnnotationModal()" style="background:var(--card); border:1px solid var(--border); color:#fff; padding:0.5rem 1rem; border-radius:6px; cursor:pointer;">Cancel</button>
-        <button onclick="saveAnnotation()" class="add-ann-btn">Post Annotation &check;</button>
-      </div>
-    </div>
-  </div>
 
   <script>
     hljs.highlightAll();
 
-    function openAnnotationModal() {{
-      document.getElementById('ann-modal').style.display = 'flex';
-    }}
-    function closeAnnotationModal() {{
-      document.getElementById('ann-modal').style.display = 'none';
+    let currentSelectedText = "";
+
+    // --- TEXT SELECTION HANDLER ---
+    function handleTextSelection(e) {{
+      const selection = window.getSelection();
+      const text = selection.toString().trim();
+      const tooltip = document.getElementById("selection-tooltip");
+
+      if (text.length > 3) {{
+        currentSelectedText = text;
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        
+        tooltip.style.left = (rect.left + window.scrollX + rect.width / 2 - 80) + "px";
+        tooltip.style.top = (rect.top + window.scrollY - 42) + "px";
+        tooltip.style.display = "flex";
+      }} else {{
+        setTimeout(() => {{
+          if (window.getSelection().toString().trim().length === 0) {{
+            tooltip.style.display = "none";
+          }}
+        }}, 200);
+      }}
     }}
 
-    function saveAnnotation() {{
-      const topic = document.getElementById('ann-topic').value.trim() || 'General';
-      const text = document.getElementById('ann-text').value.trim();
+    // --- CREATE COMMENT THREAD FROM SELECTION ---
+    function openCommentFromSelection() {{
+      const text = currentSelectedText;
       if (!text) return;
 
-      const newAnn = {{
-        id: 'NOTE-' + String(Date.now()).slice(-4),
-        section: topic,
-        author: 'Ramakant',
-        timestamp: new Date().toLocaleString('en-US', {{ timeZone: 'America/Los_Angeles' }}) + ' PST',
-        question: text,
-        status: 'OPEN',
-        response: 'Pending Tutor Review...'
+      const userQuestion = prompt(`💬 Ask Question about selected text:\n\n"${{text}}"\n\nType your question or observation:`);
+      if (!userQuestion || !userQuestion.trim()) return;
+
+      const newThreadId = "thread_" + Date.now().toString().slice(-4);
+      const newThread = {{
+        thread_id: newThreadId,
+        section: "User Highlight",
+        highlighted_text: text,
+        created_at: new Date().toLocaleString('en-US', {{ timeZone: 'America/Los_Angeles' }}) + ' PST',
+        status: "OPEN",
+        messages: [
+          {{
+            author: "Ramakant",
+            role: "researcher",
+            text: userQuestion.trim(),
+            timestamp: new Date().toLocaleString('en-US', {{ timeZone: 'America/Los_Angeles' }}) + ' PST'
+          }}
+        ]
       }};
 
-      // Save locally in localStorage
-      let localAnns = JSON.parse(localStorage.getItem('user_annotations') || '[]');
-      localAnns.unshift(newAnn);
-      localStorage.setItem('user_annotations', JSON.stringify(localAnns));
+      // Save to localStorage
+      let localThreads = JSON.parse(localStorage.getItem('research_threads') || '[]');
+      localThreads.unshift(newThread);
+      localStorage.setItem('research_threads', JSON.stringify(localThreads));
 
-      alert('Annotation added to local session! In the next turn, Antigravity or the Chronicler subagent will formally ingest it into annotations.json and answer it.');
-      closeAnnotationModal();
+      alert('Question posted! Antigravity (Tutor) and Chronicler subagent will review it in annotations.json and provide answers.');
       location.reload();
+    }}
+
+    // --- POST REPLY TO THREAD ---
+    function postReply(threadId) {{
+      const input = document.getElementById('reply-input-' + threadId);
+      const replyText = input.value.trim();
+      if (!replyText) return;
+
+      const replyMsg = {{
+        author: "Ramakant",
+        role: "researcher",
+        text: replyText,
+        timestamp: new Date().toLocaleString('en-US', {{ timeZone: 'America/Los_Angeles' }}) + ' PST'
+      }};
+
+      // Store reply
+      let threadReplies = JSON.parse(localStorage.getItem('thread_replies_' + threadId) || '[]');
+      threadReplies.push(replyMsg);
+      localStorage.setItem('thread_replies_' + threadId, JSON.stringify(threadReplies));
+
+      input.value = '';
+      alert('Reply added to thread! Tutor is notified.');
+      location.reload();
+    }}
+
+    function scrollToHighlight(threadId) {{
+      const card = document.getElementById(threadId);
+      if (card) {{
+        card.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
+        card.classList.add('focused');
+        setTimeout(() => card.classList.remove('focused'), 2000);
+      }}
     }}
   </script>
 </body>

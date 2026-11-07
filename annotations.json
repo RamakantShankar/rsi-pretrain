@@ -1,20 +1,44 @@
 [
   {
-    "id": "NOTE-01",
-    "section": "Pillar 1: Tokenomics",
-    "author": "Ramakant",
-    "timestamp": "2026-11-07 05:16 PST",
-    "question": "Is current tokenizer large because it supports all languages? Would it be a bottleneck in keeping model small? Should we just focus on English?",
+    "thread_id": "thread_01",
+    "section": "Pillar 1: Tokenomics & Embedding Tax",
+    "highlighted_text": "Is current tokenizer large because it supports all language? Would it be a bottleneck in keeping model small? Should we just focus on English?",
+    "created_at": "2026-11-07 05:16 PST",
     "status": "ANSWERED",
-    "response": "Yes! The 100,262 token vocabulary consumes 77.0M parameters—over 50.6% of our entire 152M model budget. Pruning to a specialized 16k Python+English tokenizer reclaims 64.4M parameters, allowing us to increase Transformer depth from 12 to 20+ layers under the exact same parameter budget."
+    "messages": [
+      {
+        "author": "Ramakant",
+        "role": "researcher",
+        "text": "Is current tokenizer large because it supports all language? Would it be a bottleneck in keeping model small? Should we just focus on English?",
+        "timestamp": "2026-11-07 05:16 PST"
+      },
+      {
+        "author": "Antigravity (Tutor)",
+        "role": "tutor",
+        "text": "Yes, absolutely! The 100,262 token vocabulary consumes 77.0M parameters—over 50.6% of our entire 152M model budget. By pruning to a specialized 16k Python+English tokenizer, we reclaim 64.4M parameters, allowing us to increase Transformer depth from 12 to 20+ layers under the exact same parameter budget.",
+        "timestamp": "2026-11-07 05:20 PST"
+      }
+    ]
   },
   {
-    "id": "NOTE-02",
-    "section": "Pillar 2: Data Density",
-    "author": "Ramakant",
-    "timestamp": "2026-11-07 05:16 PST",
-    "question": "How do we identify right data to make our model capable from all angles? How do we curate it really specific avoiding all noise? Highest quality possible.",
-    "status": "IN_PROGRESS",
-    "response": "We will follow the Microsoft Phi-1 playbook: filter raw code using heuristic AST density filters, prune out boilerplate configuration scripts, and generate synthetic algorithmic 'textbooks' with explicit variable-state step tracing."
+    "thread_id": "thread_02",
+    "section": "Pillar 2: Data Density & Textbooks",
+    "highlighted_text": "How do we identify right data to make our model capable from all angles. How do we curate it really spefic avoiding all noise. Highest quality possible",
+    "created_at": "2026-11-07 05:16 PST",
+    "status": "IN_DISCUSSION",
+    "messages": [
+      {
+        "author": "Ramakant",
+        "role": "researcher",
+        "text": "How do we identify right data to make our model capable from all angles. How do we curate it really spefic avoiding all noise. Highest quality possible",
+        "timestamp": "2026-11-07 05:16 PST"
+      },
+      {
+        "author": "Antigravity (Tutor)",
+        "role": "tutor",
+        "text": "We will implement the Microsoft Phi-1 'Textbook' protocol: use AST-based heuristic filters to purge boilerplate configuration code, extract clean algorithmic functions with docstrings, and generate synthetic step-by-step variable execution traces.",
+        "timestamp": "2026-11-07 05:22 PST"
+      }
+    ]
   }
 ]
