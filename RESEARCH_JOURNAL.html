@@ -755,6 +755,70 @@ graph TD
 <li><strong>Entropy Reduction via <code>ruff</code> / <code>black</code>:</strong> Standardizing spacing around commas, brackets, and operators shrinks cosmetic n-gram entropy by $\approx 25-35\%$, dedicating precious vocabulary slots to actual logic rather than whitespace variations.</li>
 </ol>
 <hr />
+<h3>🏛️ Architecture Allocation: Depth (Reasoning) vs. Width (Memory)</h3>
+<p>Now that 64.4 Million parameters are reclaimed from the embedding table, how should our neural network spend them?</p>
+<div class="mermaid">
+graph TD
+    subgraph TokenizerLevel ["1. Tokenizer Space (Symbolic / Zero Weights)"]
+        Tok["<b>Tokenizer (BPE Dictionary)</b><br>Maps strings to integer IDs: 'def' &rarr; 423<br><i>Contains 0 neural network weights!</i>"]
+        Vocab["<b>Fixed Vocabulary Size (V)</b><br>V = 16,384 tokens"]
+    end
+
+    subgraph ModelLevel ["2. PyTorch Model Space (Trainable Parameters)"]
+        Embed["<b>nn.Embedding(V, d) Matrix</b><br>Shape: [16,384, 768]<br>Parameters = V &times; d = <b>12.6M params</b>"]
+        Blocks["<b>Transformer Trunk: 19 Layers</b><br>Parameters = 19 &times; 5.90M = <b>112.1M params</b>"]
+        Head["<b>Language Model Head (Linear)</b><br>Shape: [768, 16,384]<br><i>(Weight-tied to embedding matrix)</i>"]
+    end
+
+    Tok --> Vocab --> Embed
+    Embed --> Blocks --> Head
+
+    style TokenizerLevel fill:#1e1b4b,stroke:#6366f1,stroke-width:1px;
+    style ModelLevel fill:#064e3b,stroke:#059669,stroke-width:2px;
+    style Embed fill:#0284c7,stroke:#38bdf8,stroke-width:1px;
+    style Blocks fill:#064e3b,stroke:#34d399,stroke-width:2px;
+</div>
+
+<h4>First Principles: The Embedding Parameter Equation</h4>
+<ul>
+<li><strong>The Formula:</strong> The embedding layer is a 2D lookup matrix of shape $[V \times d]$, where $V$ is the vocabulary size from the tokenizer and $d$ is the model's hidden dimension:
+  $$\text{Embedding Parameters} = V \times d$$</li>
+<li><strong>Why Tokenizer Size Dictates Model Weights:</strong> The tokenizer itself contains no neural network weights—it is purely a string-to-integer dictionary. However, the neural network requires a trainable $d$-dimensional vector for every single token ID in that dictionary!</li>
+<li>At $V = 100,262$ and $d = 768$: $100,262 \times 768 = \mathbf{77.0\text{M parameters}}$</li>
+<li>At $V = 16,384$ and $d = 768$: $16,384 \times 768 = \mathbf{12.6\text{M parameters}}$</li>
+<li><strong>Can We Adjust Embeddings During Training?</strong> No. Once pretraining begins, the token IDs ($0 \dots V-1$) are intrinsically bound to the corresponding rows of <code>nn.Embedding</code>. Adding or removing tokens mid-training alters the matrix dimensions and misaligns the model's learned positional and syntactic representations.</li>
+</ul>
+<h4>Depth vs. Width: The Frontier Trade-off</h4>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Dimension</th>
+<th style="text-align: left;">Primary Capability</th>
+<th style="text-align: left;">Algorithmic Code Impact</th>
+<th style="text-align: left;">Hardware / Latency Trade-off</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Depth ($L$)</strong></td>
+<td style="text-align: left;"><strong>Circuit Depth / Compositional Logic</strong></td>
+<td style="text-align: left;">Essential for nested loops, recursion, and step-by-step state tracking across variables.</td>
+<td style="text-align: left;"><strong>Sequential Decoding Latency:</strong> Each generated token must traverse all $L$ layers sequentially ($O(L)$ latency).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Width ($d$)</strong></td>
+<td style="text-align: left;"><strong>Associative Memory / Factual Capacity</strong></td>
+<td style="text-align: left;">Stores vast numbers of API names, syntax trivia, and documentation facts.</td>
+<td style="text-align: left;"><strong>Higher FLOPs per Step:</strong> Matrix multiplications scale quadratically ($4d^2$) with width.</td>
+</tr>
+</tbody>
+</table>
+<h4>The Small-Scale Architecture Sweep Protocol</h4>
+<p>To avoid guessing between pure depth ($L=19, d=768$) vs. balanced scaling ($L=16, d=832$), we execute a 3-arm small-scale pretraining ablation (1,000 steps each) tracking:
+1. <strong>Validation Bits Per Byte (BPB)</strong> on Python code.
+2. <strong>Pass@1 Accuracy</strong> on HumanEval algorithmic reasoning.
+3. <strong>Generation Latency (Tokens / Second)</strong> during autoregressive sampling.</p>
+<hr />
 <hr />
 <h2>💬 Collaborative Annotations &amp; Open Questions</h2>
 <p><em>This section dynamically records notes, questions, and hypotheses added by Ramakant and Antigravity.</em></p>
@@ -811,6 +875,14 @@ graph TD
 <td style="text-align: center;">✅ <strong>ANSWERED</strong></td>
 <td style="text-align: left;">~200MB populates 16k-32k Zipf distribution while keeping rare variables in subwords. Ruff/black formatting guarantees 4-space indent token hit rate and collapses 30% formatting entropy!</td>
 </tr>
+<tr>
+<td style="text-align: center;"><code>NOTE-06</code></td>
+<td style="text-align: left;">Depth vs Width &amp; Embedding Math</td>
+<td style="text-align: center;">Ramakant</td>
+<td style="text-align: left;"><em>Depth helps with reasoning, width with facts; decoding latency increases with depth. How are embedding params calculated from tokenizer training? Can we adjust embeddings in training?</em></td>
+<td style="text-align: center;">✅ <strong>ANSWERED</strong></td>
+<td style="text-align: left;">Tokenizer has zero weights (string dictionary). Model allocates nn.Embedding(V, d) matrix where Params = V * d. Once training starts, V is frozen. Small-scale sweep will test L=19 d=768 vs L=16 d=832!</td>
+</tr>
 </tbody>
 </table>
 <!-- ANNOTATIONS_TABLE_END -->
@@ -819,7 +891,7 @@ graph TD
   <!-- CONVERSATIONAL ANNOTATIONS DRAWER -->
   <aside id="journal-drawer">
     <div class="drawer-title">
-      <span>💬 Discussions (5)</span>
+      <span>💬 Discussions (6)</span>
       <span style="font-size:0.75rem; color:var(--text-muted);">Highlight text to start new thread</span>
     </div>
 
@@ -987,6 +1059,39 @@ graph TD
           <div class="thread-reply-box">
             <input type="text" placeholder="Reply to this thread..." class="reply-input" id="reply-input-thread_05" onkeydown="if(event.key==='Enter') postReply('thread_05')">
             <button class="reply-btn" onclick="postReply('thread_05')">Reply</button>
+          </div>
+        </div>
+        
+        <div class="thread-card" id="thread_06" data-thread-id="thread_06">
+          <div class="thread-card-header">
+            <span class="thread-section">📌 Pillar 1: Architecture Depth vs Width & Embedding Math</span>
+            <span class="thread-status" style="border-color:var(--accent-green); color:var(--accent-green);">ANSWERED</span>
+          </div>
+          <div class="thread-quote" onclick="scrollToHighlight('thread_06')">
+            “Depth - usually helps with reasoning, width with facts. Increasing layers may make the model slower. We should run sweep at small scale to find a sweet spot. QQ - I did not understand how is Embedding Params participated/calculated in tokenizer training? We should be able to adjust number of embeddings in training right?”
+          </div>
+          <div class="thread-messages">
+            
+            <div class="thread-msg user-bubble">
+              <div class="msg-header">
+                <strong>👤 Ramakant</strong>
+                <small>2026-11-08 00:30 PST</small>
+              </div>
+              <div class="msg-text">Depth helps with reasoning, width with facts. Increasing layers makes decoding slower. We should run a small-scale sweep. QQ: How are embedding params calculated from tokenizer training? Can we adjust embeddings in training?</div>
+            </div>
+            
+            <div class="thread-msg tutor-bubble">
+              <div class="msg-header">
+                <strong>🎓 Antigravity (Tutor)</strong>
+                <small>2026-11-08 00:33 PST</small>
+              </div>
+              <div class="msg-text">Brilliant distinction! Tokenizer training itself has zero weights (it's pure text counting). But its vocab size V sets the dimensions of PyTorch's nn.Embedding(V, d). Each token gets a d-dimensional vector, so Params = V * d. Once pretraining begins, V is frozen because changing V alters the matrix shape and invalidates all token index mappings.</div>
+            </div>
+            
+          </div>
+          <div class="thread-reply-box">
+            <input type="text" placeholder="Reply to this thread..." class="reply-input" id="reply-input-thread_06" onkeydown="if(event.key==='Enter') postReply('thread_06')">
+            <button class="reply-btn" onclick="postReply('thread_06')">Reply</button>
           </div>
         </div>
         

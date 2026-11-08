@@ -251,6 +251,54 @@ graph TD
 
 ---
 
+### 🏛️ Architecture Allocation: Depth (Reasoning) vs. Width (Memory)
+
+Now that 64.4 Million parameters are reclaimed from the embedding table, how should our neural network spend them?
+
+```mermaid
+graph TD
+    subgraph TokenizerLevel ["1. Tokenizer Space (Symbolic / Zero Weights)"]
+        Tok["<b>Tokenizer (BPE Dictionary)</b><br>Maps strings to integer IDs: 'def' &rarr; 423<br><i>Contains 0 neural network weights!</i>"]
+        Vocab["<b>Fixed Vocabulary Size (V)</b><br>V = 16,384 tokens"]
+    end
+
+    subgraph ModelLevel ["2. PyTorch Model Space (Trainable Parameters)"]
+        Embed["<b>nn.Embedding(V, d) Matrix</b><br>Shape: [16,384, 768]<br>Parameters = V &times; d = <b>12.6M params</b>"]
+        Blocks["<b>Transformer Trunk: 19 Layers</b><br>Parameters = 19 &times; 5.90M = <b>112.1M params</b>"]
+        Head["<b>Language Model Head (Linear)</b><br>Shape: [768, 16,384]<br><i>(Weight-tied to embedding matrix)</i>"]
+    end
+
+    Tok --> Vocab --> Embed
+    Embed --> Blocks --> Head
+
+    style TokenizerLevel fill:#1e1b4b,stroke:#6366f1,stroke-width:1px;
+    style ModelLevel fill:#064e3b,stroke:#059669,stroke-width:2px;
+    style Embed fill:#0284c7,stroke:#38bdf8,stroke-width:1px;
+    style Blocks fill:#064e3b,stroke:#34d399,stroke-width:2px;
+```
+
+#### First Principles: The Embedding Parameter Equation
+* **The Formula:** The embedding layer is a 2D lookup matrix of shape $[V \times d]$, where $V$ is the vocabulary size from the tokenizer and $d$ is the model's hidden dimension:
+  $$\text{Embedding Parameters} = V \times d$$
+* **Why Tokenizer Size Dictates Model Weights:** The tokenizer itself contains no neural network weights—it is purely a string-to-integer dictionary. However, the neural network requires a trainable $d$-dimensional vector for every single token ID in that dictionary!
+  - At $V = 100,262$ and $d = 768$: $100,262 \times 768 = \mathbf{77.0\text{M parameters}}$
+  - At $V = 16,384$ and $d = 768$: $16,384 \times 768 = \mathbf{12.6\text{M parameters}}$
+* **Can We Adjust Embeddings During Training?** No. Once pretraining begins, the token IDs ($0 \dots V-1$) are intrinsically bound to the corresponding rows of `nn.Embedding`. Adding or removing tokens mid-training alters the matrix dimensions and misaligns the model's learned positional and syntactic representations.
+
+#### Depth vs. Width: The Frontier Trade-off
+| Dimension | Primary Capability | Algorithmic Code Impact | Hardware / Latency Trade-off |
+| :--- | :--- | :--- | :--- |
+| **Depth ($L$)** | **Circuit Depth / Compositional Logic** | Essential for nested loops, recursion, and step-by-step state tracking across variables. | **Sequential Decoding Latency:** Each generated token must traverse all $L$ layers sequentially ($O(L)$ latency). |
+| **Width ($d$)** | **Associative Memory / Factual Capacity** | Stores vast numbers of API names, syntax trivia, and documentation facts. | **Higher FLOPs per Step:** Matrix multiplications scale quadratically ($4d^2$) with width. |
+
+#### The Small-Scale Architecture Sweep Protocol
+To avoid guessing between pure depth ($L=19, d=768$) vs. balanced scaling ($L=16, d=832$), we execute a 3-arm small-scale pretraining ablation (1,000 steps each) tracking:
+1. **Validation Bits Per Byte (BPB)** on Python code.
+2. **Pass@1 Accuracy** on HumanEval algorithmic reasoning.
+3. **Generation Latency (Tokens / Second)** during autoregressive sampling.
+
+---
+
 ---
 
 ## 💬 Collaborative Annotations & Open Questions
@@ -265,4 +313,5 @@ graph TD
 | `NOTE-03` | Tokenizer Retraining | Ramakant | *Do we need to train tokenizer again once we change training data (e.g. expand to literature dataset)?* | ✅ **ANSWERED** | Byte-fallback handles new domains without crashing, but causes severe subword inflation. Once weights are trained, embedding matrices are frozen. Frontier protocol: blend 80% code + 20% technical English upfront! |
 | `NOTE-04` | Data Mix & Typos | Ramakant | *Should it have more English docs or Python? How do we decide % in datamix? How are misspellings handled?* | ✅ **ANSWERED** | 80/20 Code/English paradox: code is syntactically brittle; docstrings bridge natural language. Typos are resolved via 3-tier subword fallback ('pal'+'in'+'drom') with semantic vector overlap. |
 | `NOTE-05` | Corpus Scale & AST Normalization | Ramakant | *Volume intuition (~200MB) and preprocessing raw code via standard Python formatter.* | ✅ **ANSWERED** | ~200MB populates 16k-32k Zipf distribution while keeping rare variables in subwords. Ruff/black formatting guarantees 4-space indent token hit rate and collapses 30% formatting entropy! |
+| `NOTE-06` | Depth vs Width & Embedding Math | Ramakant | *Depth helps with reasoning, width with facts; decoding latency increases with depth. How are embedding params calculated from tokenizer training? Can we adjust embeddings in training?* | ✅ **ANSWERED** | Tokenizer has zero weights (string dictionary). Model allocates nn.Embedding(V, d) matrix where Params = V * d. Once training starts, V is frozen. Small-scale sweep will test L=19 d=768 vs L=16 d=832! |
 <!-- ANNOTATIONS_TABLE_END -->

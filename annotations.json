@@ -103,5 +103,26 @@
         "timestamp": "2026-11-08 00:20 PST"
       }
     ]
+  },
+  {
+    "thread_id": "thread_06",
+    "section": "Pillar 1: Architecture Depth vs Width & Embedding Math",
+    "highlighted_text": "Depth - usually helps with reasoning, width with facts. Increasing layers may make the model slower. We should run sweep at small scale to find a sweet spot. QQ - I did not understand how is Embedding Params participated/calculated in tokenizer training? We should be able to adjust number of embeddings in training right?",
+    "created_at": "2026-11-08 00:30 PST",
+    "status": "ANSWERED",
+    "messages": [
+      {
+        "author": "Ramakant",
+        "role": "researcher",
+        "text": "Depth helps with reasoning, width with facts. Increasing layers makes decoding slower. We should run a small-scale sweep. QQ: How are embedding params calculated from tokenizer training? Can we adjust embeddings in training?",
+        "timestamp": "2026-11-08 00:30 PST"
+      },
+      {
+        "author": "Antigravity (Tutor)",
+        "role": "tutor",
+        "text": "Brilliant distinction! Tokenizer training itself has zero weights (it's pure text counting). But its vocab size V sets the dimensions of PyTorch's nn.Embedding(V, d). Each token gets a d-dimensional vector, so Params = V * d. Once pretraining begins, V is frozen because changing V alters the matrix shape and invalidates all token index mappings.",
+        "timestamp": "2026-11-08 00:33 PST"
+      }
+    ]
   }
 ]
