@@ -4,15 +4,15 @@ Supports fast encoding/decoding using tiktoken (GPT-4 / cl100k_base pattern)
 with custom special tokens for code pretraining.
 """
 
+import os
 from typing import List, Union
-import tiktoken
+from pathlib import Path
 
 
 class CodeTokenizer:
     """
     High-performance byte-pair encoding tokenizer for code.
-    Defaults to the cl100k_base regex pattern used in GPT-4, which
-    splits on whitespace, contractions, punctuation, and multi-space runs cleanly.
+    Supports either standard tiktoken cl100k_base or custom HuggingFace BPE JSON models (e.g. mirendil_16k.json).
     """
     
     SPECIAL_TOKENS = {
@@ -24,20 +24,34 @@ class CodeTokenizer:
     }
 
     def __init__(self, encoding_name: str = "cl100k_base"):
-        self.encoding_name = encoding_name
-        self._enc = tiktoken.get_encoding(encoding_name)
+        self.encoding_name = str(encoding_name)
+        self.is_custom_json = self.encoding_name.endswith(".json") or Path(self.encoding_name).exists()
         
-        # Total vocabulary size including special tokens
-        self.eot_token = self.SPECIAL_TOKENS["<|endoftext|>"]
-        self.pad_token = self.SPECIAL_TOKENS["<|pad|>"]
-        self.vocab_size = self._enc.n_vocab + len(self.SPECIAL_TOKENS)
+        if self.is_custom_json:
+            from tokenizers import Tokenizer
+            self._tok = Tokenizer.from_file(self.encoding_name)
+            self.vocab_size = self._tok.get_vocab_size()
+            eot = self._tok.token_to_id("<|endoftext|>")
+            pad = self._tok.token_to_id("<|pad|>")
+            self.eot_token = eot if eot is not None else 0
+            self.pad_token = pad if pad is not None else (self.eot_token + 1)
+        else:
+            import tiktoken
+            self._enc = tiktoken.get_encoding(self.encoding_name)
+            self.eot_token = self.SPECIAL_TOKENS["<|endoftext|>"]
+            self.pad_token = self.SPECIAL_TOKENS["<|pad|>"]
+            self.vocab_size = self._enc.n_vocab + len(self.SPECIAL_TOKENS)
 
     def encode(self, text: str, allowed_special: Union[str, set] = "all") -> List[int]:
         """Encodes string to a list of token IDs."""
+        if self.is_custom_json:
+            return self._tok.encode(text).ids
         return self._enc.encode(text, allowed_special=allowed_special)
 
     def decode(self, tokens: List[int]) -> str:
         """Decodes token IDs back to human-readable string."""
+        if self.is_custom_json:
+            return self._tok.decode(tokens)
         return self._enc.decode(tokens)
 
     @property
