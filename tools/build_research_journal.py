@@ -317,6 +317,175 @@ def build_journal_html():
     table {{ width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.9rem; }}
     th, td {{ padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--border); text-align: left; }}
     th {{ background: rgba(255,255,255,0.04); color: #fff; }}
+
+    /* Unrestricted, Responsive Image Styling */
+    #journal-main img {{
+      max-width: 100%;
+      width: auto;
+      height: auto;
+      display: block;
+      margin: 1.75rem auto;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      cursor: zoom-in;
+      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }}
+    #journal-main img:hover {{
+      border-color: var(--accent-blue);
+      box-shadow: 0 6px 28px rgba(56, 189, 248, 0.3);
+    }}
+    .image-figure {{
+      margin: 2rem 0;
+      text-align: center;
+      position: relative;
+      width: 100%;
+    }}
+    .image-figure img {{
+      margin: 0 auto;
+    }}
+    .image-caption {{
+      margin-top: 0.6rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-style: italic;
+    }}
+    .image-zoom-badge {{
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-top: 0.6rem;
+      padding: 0.3rem 0.8rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--accent-blue);
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }}
+    .image-zoom-badge:hover {{
+      background: rgba(56, 189, 248, 0.22);
+      border-color: var(--accent-blue);
+      color: #fff;
+      transform: translateY(-1px);
+    }}
+
+    /* Lightbox Modal */
+    .lightbox-overlay {{
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 7, 13, 0.94);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 99999;
+      justify-content: center;
+      align-items: center;
+      padding: 1.5rem;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }}
+    .lightbox-overlay.active {{
+      display: flex;
+      opacity: 1;
+    }}
+    .lightbox-content {{
+      max-width: 96vw;
+      max-height: 94vh;
+      display: flex;
+      flex-direction: column;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.85);
+      overflow: hidden;
+      animation: lightboxPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }}
+    @keyframes lightboxPop {{
+      from {{ transform: scale(0.96); opacity: 0; }}
+      to {{ transform: scale(1); opacity: 1; }}
+    }}
+    .lightbox-header {{
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 1.25rem;
+      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid var(--border);
+      gap: 1rem;
+    }}
+    .lightbox-caption {{
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 60vw;
+    }}
+    .lightbox-controls {{
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }}
+    .lightbox-btn {{
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.4rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.15s ease;
+    }}
+    .lightbox-btn:hover {{
+      background: var(--border);
+      border-color: var(--accent-blue);
+      color: #fff;
+    }}
+    .lightbox-btn.close-btn {{
+      background: rgba(244, 63, 94, 0.15);
+      border-color: rgba(244, 63, 94, 0.4);
+      color: var(--accent-rose);
+    }}
+    .lightbox-btn.close-btn:hover {{
+      background: var(--accent-rose);
+      color: #fff;
+    }}
+    .lightbox-img-wrapper {{
+      overflow: auto;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1.25rem;
+      max-height: calc(94vh - 65px);
+      background: #050811;
+    }}
+    .lightbox-img-wrapper img {{
+      max-width: 90vw;
+      max-height: 80vh;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      border-radius: 6px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.7);
+      cursor: grab;
+      transition: transform 0.2s ease;
+      margin: 0;
+    }}
+    .lightbox-img-wrapper img.zoomed {{
+      max-width: none;
+      max-height: none;
+      cursor: zoom-out;
+    }}
   </style>
 </head>
 <body>
@@ -347,6 +516,29 @@ def build_journal_html():
       {threads_html}
     </div>
   </aside>
+
+  <!-- IMAGE LIGHTBOX MODAL -->
+  <div id="image-lightbox" class="lightbox-overlay" onclick="closeLightbox(event)">
+    <div class="lightbox-content" onclick="event.stopPropagation()">
+      <div class="lightbox-header">
+        <span id="lightbox-caption" class="lightbox-caption">Laboratory Visual Asset</span>
+        <div class="lightbox-controls">
+          <a id="lightbox-external-link" href="#" target="_blank" class="lightbox-btn" title="Open original image in new tab">
+            <span>↗ Open in New Tab</span>
+          </a>
+          <button class="lightbox-btn" onclick="toggleLightboxZoom()" title="Toggle full zoom">
+            <span id="lightbox-zoom-text">🔍 100%</span>
+          </button>
+          <button class="lightbox-btn close-btn" onclick="closeLightbox()" title="Close (Esc)">
+            <span>✕ Close</span>
+          </button>
+        </div>
+      </div>
+      <div class="lightbox-img-wrapper">
+        <img id="lightbox-img" src="" alt="Enlarged view" />
+      </div>
+    </div>
+  </div>
 
   <script>
     hljs.highlightAll();
@@ -441,6 +633,93 @@ def build_journal_html():
         setTimeout(() => card.classList.remove('focused'), 2000);
       }}
     }}
+
+    // --- LIGHTBOX ENGINE FOR HIGH-RES IMAGE INSPECTION ---
+    function initLightbox() {{
+      const images = document.querySelectorAll('#journal-main img');
+      images.forEach((img, idx) => {{
+        img.title = img.title || "Click to expand image in full resolution";
+        img.style.cursor = "zoom-in";
+        img.onclick = () => openLightbox(img.src, img.alt || img.title || `Figure ${{idx + 1}}`);
+
+        if (!img.closest('.image-figure')) {{
+          const figure = document.createElement('div');
+          figure.className = 'image-figure';
+          img.parentNode.insertBefore(figure, img);
+          figure.appendChild(img);
+
+          const badge = document.createElement('button');
+          badge.type = 'button';
+          badge.className = 'image-zoom-badge';
+          badge.innerHTML = '🔍 Click to expand full size';
+          badge.onclick = (e) => {{
+            e.stopPropagation();
+            openLightbox(img.src, img.alt || img.title || `Figure ${{idx + 1}}`);
+          }};
+          figure.appendChild(badge);
+
+          if (img.alt && img.alt !== 'Figure') {{
+            const cap = document.createElement('div');
+            cap.className = 'image-caption';
+            cap.textContent = img.alt;
+            figure.appendChild(cap);
+          }}
+        }}
+      }});
+    }}
+
+    let isZoomed = false;
+
+    function openLightbox(src, caption) {{
+      const overlay = document.getElementById('image-lightbox');
+      const img = document.getElementById('lightbox-img');
+      const cap = document.getElementById('lightbox-caption');
+      const link = document.getElementById('lightbox-external-link');
+      const zoomText = document.getElementById('lightbox-zoom-text');
+
+      img.src = src;
+      img.classList.remove('zoomed');
+      isZoomed = false;
+      zoomText.textContent = '🔍 100%';
+      cap.textContent = caption || 'Laboratory Visual Asset';
+      link.href = src;
+
+      overlay.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }}
+
+    function closeLightbox(e) {{
+      if (e && e.target && e.target.closest && e.target.closest('.lightbox-content')) return;
+      const overlay = document.getElementById('image-lightbox');
+      overlay.classList.remove('active');
+      document.body.style.overflow = '';
+    }}
+
+    function toggleLightboxZoom() {{
+      const img = document.getElementById('lightbox-img');
+      const zoomText = document.getElementById('lightbox-zoom-text');
+      isZoomed = !isZoomed;
+      if (isZoomed) {{
+        img.classList.add('zoomed');
+        zoomText.textContent = '🔍 Fit Window';
+      }} else {{
+        img.classList.remove('zoomed');
+        zoomText.textContent = '🔍 100%';
+      }}
+    }}
+
+    document.addEventListener('keydown', (e) => {{
+      if (e.key === 'Escape') {{
+        closeLightbox();
+      }}
+    }});
+
+    // Initialize lightbox on DOM load
+    window.addEventListener('DOMContentLoaded', () => {{
+      initLightbox();
+    }});
+    // Also run immediately
+    initLightbox();
   </script>
 </body>
 </html>

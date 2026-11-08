@@ -695,6 +695,22 @@ graph TD
 <td style="text-align: center;">✅ <strong>ANSWERED</strong></td>
 <td style="text-align: left;">3-tier filtering hierarchy: 1) LLM educational classifiers; 2) Syntactic PEP-8/type-hint density; 3) Execution traces. Proven by python-edu dropping PPL by 30.8% and driving Gen 1 Pass@1 to 18.18% zero-shot!</td>
 </tr>
+<tr>
+<td style="text-align: center;"><code>NOTE-03</code></td>
+<td style="text-align: left;">Tokenizer Retraining</td>
+<td style="text-align: center;">Ramakant</td>
+<td style="text-align: left;"><em>Do we need to train tokenizer again once we change training data (e.g. expand to literature dataset)?</em></td>
+<td style="text-align: center;">✅ <strong>ANSWERED</strong></td>
+<td style="text-align: left;">Byte-fallback handles new domains without crashing, but causes severe subword inflation. Once weights are trained, embedding matrices are frozen. Frontier protocol: blend 80% code + 20% technical English upfront!</td>
+</tr>
+<tr>
+<td style="text-align: center;"><code>NOTE-04</code></td>
+<td style="text-align: left;">Data Mix &amp; Typos</td>
+<td style="text-align: center;">Ramakant</td>
+<td style="text-align: left;"><em>Should it have more English docs or Python? How do we decide % in datamix? How are misspellings handled?</em></td>
+<td style="text-align: center;">✅ <strong>ANSWERED</strong></td>
+<td style="text-align: left;">80/20 Code/English paradox: code is syntactically brittle; docstrings bridge natural language. Typos are resolved via 3-tier subword fallback ('pal'+'in'+'drom') with semantic vector overlap.</td>
+</tr>
 </tbody>
 </table>
 <!-- ANNOTATIONS_TABLE_END -->
