@@ -25,7 +25,7 @@
     "section": "Pillar 2: Data Density & Textbooks",
     "highlighted_text": "How do we identify right data to make our model capable from all angles. How do we curate it really spefic avoiding all noise. Highest quality possible",
     "created_at": "2026-11-07 05:16 PST",
-    "status": "IN_DISCUSSION",
+    "status": "ANSWERED",
     "messages": [
       {
         "author": "Ramakant",
@@ -38,6 +38,48 @@
         "role": "tutor",
         "text": "We will implement the Microsoft Phi-1 'Textbook' protocol: use AST-based heuristic filters to purge boilerplate configuration code, extract clean algorithmic functions with docstrings, and generate synthetic step-by-step variable execution traces.",
         "timestamp": "2026-11-07 05:22 PST"
+      }
+    ]
+  },
+  {
+    "thread_id": "thread_03",
+    "section": "Pillar 1: Tokenizer Retraining & Dataset Expansion",
+    "highlighted_text": "Do we need trainin tokenizer again, once we change training data? suppose we expand it to literature dataset. do we need to train?",
+    "created_at": "2026-11-07 23:53 PST",
+    "status": "ANSWERED",
+    "messages": [
+      {
+        "author": "Ramakant",
+        "role": "researcher",
+        "text": "Do we need trainin tokenizer again, once we change training data? suppose we expand it to literature dataset. do we need to train?",
+        "timestamp": "2026-11-07 23:53 PST"
+      },
+      {
+        "author": "Antigravity (Tutor)",
+        "role": "tutor",
+        "text": "Mechanically it works via 256 byte-fallback (zero crashes), but causes severe token inflation (literature words chopped into 4-5 pieces, shrinking effective context). Once a model is trained, its tokenizer is permanently frozen to its embedding matrix. The frontier fix: train upfront on an 80/20 Code + Technical English blend!",
+        "timestamp": "2026-11-07 23:56 PST"
+      }
+    ]
+  },
+  {
+    "thread_id": "thread_04",
+    "section": "Pillar 1: Data Mix & Misspelling Robustness",
+    "highlighted_text": "The model needs to undertand when I ask it something then write code right? So should it have more more english docs as compared to python or coding? How do we decide what kind of token contrionutes to what % in datamix? How does misspelling in input text taken care of?",
+    "created_at": "2026-11-07 23:59 PST",
+    "status": "ANSWERED",
+    "messages": [
+      {
+        "author": "Ramakant",
+        "role": "researcher",
+        "text": "The model needs to undertand when I ask it something then write code right? So should it have more more english docs as compared to python or coding? How do we decide what kind of token contrionutes to what % in datamix? How does misspelling in input text taken care of?",
+        "timestamp": "2026-11-07 23:59 PST"
+      },
+      {
+        "author": "Antigravity (Tutor)",
+        "role": "tutor",
+        "text": "1) Code needs more tokens (80/20) because Python syntax is unforgiving whereas English is flexible; 2) Mix is decided via DoReMi pilot ablations tracing the Pareto frontier; 3) Misspellings are handled via 3-tier subword fallback (['pal', 'in', 'drom']) where semantic vectors overlap with correct words.",
+        "timestamp": "2026-11-08 00:02 PST"
       }
     ]
   }
