@@ -82,5 +82,26 @@
         "timestamp": "2026-11-08 00:02 PST"
       }
     ]
+  },
+  {
+    "thread_id": "thread_05",
+    "section": "Pillar 1: Corpus Scale & AST Normalization",
+    "highlighted_text": "1.~200MB. 2. we should run into python stndard formatter",
+    "created_at": "2026-11-08 00:18 PST",
+    "status": "ANSWERED",
+    "messages": [
+      {
+        "author": "Ramakant",
+        "role": "researcher",
+        "text": "1. ~200MB of raw text data. 2. We should run raw code through a Python standard formatter.",
+        "timestamp": "2026-11-08 00:18 PST"
+      },
+      {
+        "author": "Antigravity (Tutor)",
+        "role": "tutor",
+        "text": "Spot on! ~200MB provides ~50M-70M characters, ensuring Zipf's law distribution populates all 16k-32k merges with statistically robust patterns while preventing one-off variables from polluting the vocabulary. Running code through ruff/black standardizes 4-space indentation (hitting our multi-space indentation token optimization 100% of the time) and collapses stylistic noise.",
+        "timestamp": "2026-11-08 00:20 PST"
+      }
+    ]
   }
 ]
