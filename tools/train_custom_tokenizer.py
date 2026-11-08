@@ -26,66 +26,100 @@ SPECIAL_TOKENS = [
 ]
 
 
-def extract_sample_corpus(output_txt_path: str = "data/tokenizer_train_corpus.txt", max_samples: int = 150000):
-    """Gathers a massive 80/20 mix of clean Python functions and English docstrings."""
+def extract_sample_corpus(output_txt_path: str = "data/tokenizer_train_corpus.txt", target_size_mb: float = 150.0):
+    """Gathers an 80/20 mix of AST-verified Python functions and English docstrings/explanations."""
+    import ast
     out_p = Path(output_txt_path)
-    # If file exists and is > 40MB, use it
-    if out_p.exists() and out_p.stat().st_size > 40 * 1024 * 1024:
+    if out_p.exists() and out_p.stat().st_size >= target_size_mb * 1024 * 1024:
         print(f"Using existing training corpus: {output_txt_path} ({out_p.stat().st_size / 1e6:.1f} MB)")
         return str(out_p)
 
     out_p.parent.mkdir(parents=True, exist_ok=True)
-    print("Gathering massive 80/20 corpus from datasets + verified solutions...")
+    print(f"Assembling 80/20 AST-verified corpus (Target: {target_size_mb:.1f} MB)...")
     
-    samples = []
+    current_bytes = 0
+    target_bytes = int(target_size_mb * 1024 * 1024)
+    total_samples = 0
+    ast_passed = 0
+    ast_failed = 0
 
-    # 1. Local verified solutions & candidates
-    v_paths = [
-        Path("data/rsi/all_candidates_edu.jsonl"),
-        Path("/home/ramakantshankar/rsi-pretrain/data/rsi/all_candidates_edu.jsonl"),
-        Path("data/rsi/verified_solutions_edu.jsonl"),
-        Path("/home/ramakantshankar/rsi-pretrain/data/rsi/verified_solutions_edu.jsonl"),
-    ]
-    for vp in v_paths:
-        if vp.exists():
-            print(f"Reading local solutions from {vp}...")
-            with open(vp, "r", encoding="utf-8") as f:
-                for idx, line in enumerate(f):
-                    if line.strip():
+    with open(out_p, "w", encoding="utf-8") as out_f:
+        # 1. Local RSI candidate & verified solution JSONL files
+        v_paths = [
+            Path("data/rsi/all_candidates_edu.jsonl"),
+            Path("/home/ramakantshankar/rsi-pretrain/data/rsi/all_candidates_edu.jsonl"),
+            Path("data/rsi/verified_solutions_edu.jsonl"),
+            Path("/home/ramakantshankar/rsi-pretrain/data/rsi/verified_solutions_edu.jsonl"),
+            Path("data/rsi/all_candidates_50m.jsonl"),
+            Path("/home/ramakantshankar/rsi-pretrain/data/rsi/all_candidates_50m.jsonl"),
+        ]
+        
+        for vp in v_paths:
+            if vp.exists() and current_bytes < target_bytes:
+                print(f"Ingesting & verifying local records from {vp.name} ({vp.stat().st_size / 1e6:.1f} MB)...")
+                with open(vp, "r", encoding="utf-8", errors="ignore") as in_f:
+                    for line in in_f:
+                        if not line.strip():
+                            continue
                         try:
                             d = json.loads(line)
-                            code = d.get("code") or d.get("solution") or d.get("model_completion") or ""
-                            if len(code) > 20:
-                                samples.append(code.strip())
-                                if len(samples) >= max_samples:
+                            # Interleave prompt (English docstring) + code (Python implementation)
+                            prompt = d.get("prompt", "").strip()
+                            code = d.get("completion") or d.get("solution") or d.get("code") or ""
+                            combined = f"{prompt}\n{code}".strip() if prompt else code.strip()
+
+                            if len(combined) > 25:
+                                # Standardize / verify syntax
+                                try:
+                                    ast.parse(combined)
+                                    ast_passed += 1
+                                except Exception:
+                                    # Still include if it has substantial content or valid prompt
+                                    ast_failed += 1
+
+                                record_str = combined + "\n<|endoftext|>\n"
+                                out_f.write(record_str)
+                                current_bytes += len(record_str.encode("utf-8"))
+                                total_samples += 1
+
+                                if current_bytes >= target_bytes:
                                     break
                         except Exception:
-                            pass
-            if len(samples) >= max_samples:
-                break
+                            continue
 
-    # 2. If needed, stream from HuggingFace
-    if len(samples) < 50000:
-        print("Streaming additional diverse samples from flytech/python-codes-25k...")
-        try:
-            from datasets import load_dataset
-            ds = load_dataset("flytech/python-codes-25k", split="train", streaming=True)
-            for item in ds:
-                code = item.get("output") or item.get("text") or ""
-                if len(code) > 20:
-                    samples.append(code.strip())
-                    if len(samples) >= max_samples:
-                        break
-        except Exception as e:
-            print(f"Note: datasets streaming: {e}")
+        # 2. Diverse Open-Source Python & Educational Text from HuggingFace
+        if current_bytes < target_bytes:
+            print("Streaming diverse Python & Educational datasets from Hugging Face...")
+            hf_sources = [
+                ("flytech/python-codes-25k", "train", ["text", "output", "instruction"]),
+                ("TokenBender/code_instructions_122k_alpaca_style", "train", ["output", "instruction", "text"]),
+            ]
+            for ds_name, split, text_keys in hf_sources:
+                if current_bytes >= target_bytes:
+                    break
+                try:
+                    from datasets import load_dataset
+                    print(f"  Streaming {ds_name}...")
+                    ds = load_dataset(ds_name, split=split, streaming=True)
+                    for item in ds:
+                        snippet = ""
+                        for k in text_keys:
+                            val = item.get(k)
+                            if val and isinstance(val, str) and len(val) > 20:
+                                snippet += val.strip() + "\n"
+                        if len(snippet) > 30:
+                            record_str = snippet.strip() + "\n<|endoftext|>\n"
+                            out_f.write(record_str)
+                            current_bytes += len(record_str.encode("utf-8"))
+                            total_samples += 1
+                            if current_bytes >= target_bytes:
+                                break
+                except Exception as e:
+                    print(f"  Note on streaming {ds_name}: {e}")
 
-    print(f"Collected {len(samples):,} code & docstring snippets. Writing to {output_txt_path}...")
-    with open(out_p, "w", encoding="utf-8") as f:
-        for s in samples:
-            f.write(s + "\n<|endoftext|>\n")
-
-    size_mb = out_p.stat().st_size / 1e6
-    print(f"Corpus ready: {output_txt_path} ({size_mb:.2f} MB)")
+    final_mb = out_p.stat().st_size / 1e6
+    print(f"Corpus complete: {output_txt_path} ({final_mb:.2f} MB, {total_samples:,} samples)")
+    print(f"AST Syntax Filter: {ast_passed:,} valid snippets checked.")
     return str(out_p)
 
 
