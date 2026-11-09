@@ -13,17 +13,18 @@ from src.model.mlp import SwiGLUFFN
 
 @dataclass
 class ModelConfig:
-    vocab_size: int = 100262
-    dim: int = 768
-    n_layers: int = 12
-    n_heads: int = 12
-    n_kv_heads: Optional[int] = 4  # GQA: 12 Q heads, 4 KV heads
+    vocab_size: int = 16384  # Default to specialized Mirendil Python+English vocab
+    dim: int = 896          # Default to Arm 2 Champion width
+    n_layers: int = 16      # Default to Arm 2 Champion depth
+    n_heads: int = 14       # 14 query heads (head_dim = 64)
+    n_kv_heads: Optional[int] = 2  # GQA: 14 Q heads, 2 KV heads (7:1 ratio)
     hidden_dim: Optional[int] = None
     max_seq_len: int = 2048
-    rope_theta: float = 10000.0
+    rope_theta: float = 100000.0   # Scaled RoPE base for long-context code (100k)
     norm_eps: float = 1e-6
     tie_embeddings: bool = True
     dropout: float = 0.0
+    use_qk_norm: bool = True       # QK-Norm enabled for mathematical stability
 
 
 class TransformerBlock(nn.Module):
@@ -35,6 +36,8 @@ class TransformerBlock(nn.Module):
             n_heads=config.n_heads,
             n_kv_heads=config.n_kv_heads,
             dropout=config.dropout,
+            use_qk_norm=config.use_qk_norm,
+            norm_eps=config.norm_eps,
         )
         self.ffn_norm = RMSNorm(config.dim, eps=config.norm_eps)
         self.ffn = SwiGLUFFN(dim=config.dim, hidden_dim=config.hidden_dim)
