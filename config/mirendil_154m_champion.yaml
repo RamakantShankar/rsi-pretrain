@@ -1,0 +1,44 @@
+# Mirendil-154M Production Coding Foundation Model Configuration
+# Trained on NVIDIA DGX Grace Blackwell (GB10) GPU with Progressive Adjacent Stacking
+
+experiment_name: "mirendil_154m_champion"
+
+model:
+  vocab_size: 16384          # Specialized Mirendil 16k Python+English Vocabulary
+  dim: 896                   # Golden Aspect Ratio Width (d/L = 56.0)
+  n_layers: 16               # Champion Depth (16 Layers for deep algorithmic circuits)
+  n_heads: 14                # 14 Query Heads (head_dim = 64)
+  n_kv_heads: 2              # Grouped-Query Attention (7:1 ratio)
+  max_seq_len: 512           # High-density algorithm context
+  rope_theta: 100000.0       # Scaled Rotary Base for future-proof context scaling
+  use_qk_norm: true          # Query-Key RMSNorm for attention logit stability
+  norm_eps: 1.0e-6
+  tie_embeddings: true       # Weight tying (prunes 64.4M redundant params)
+  dropout: 0.0
+
+training:
+  batch_size: 32             # 32 * 512 = 16,384 tokens per optimizer step
+  grad_accum_steps: 1
+  total_steps: 2500          # 2,500 steps = 40.96 Million tokens (1 full epoch over AST corpus)
+  transition_step: 1000      # Staged curriculum: 8L for 1,000 steps -> 16L for 1,500 steps
+  
+  # Phase 1 (8-Layer High-Throughput Exploration)
+  phase1_lr: 1.0e-3
+  phase1_warmup_steps: 100
+  
+  # Phase 2 (16-Layer Deep Reasoning Specialization)
+  phase2_lr: 5.0e-4
+  phase2_warmup_steps: 100
+  phase2_min_lr: 5.0e-5
+  
+  weight_decay: 0.1
+  max_grad_norm: 1.0
+  dtype: "bfloat16"          # Native Grace Blackwell Tensor Core acceleration
+  log_interval: 25           # Log training metrics every 25 steps (~410k tokens)
+  eval_interval: 250         # Evaluate validation loss every 250 steps (~4.1M tokens)
+  save_dir: "checkpoints/champion"
+
+data:
+  train_shard: "data/shards_16k/train_shard_00000.bin"
+  val_shard: "data/shards_16k/val_shard_00000.bin"
+  tokenizer_path: "checkpoints/tokenizers/mirendil_16k.json"

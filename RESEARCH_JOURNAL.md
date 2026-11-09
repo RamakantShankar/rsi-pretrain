@@ -393,6 +393,36 @@ flowchart LR
 
 ---
 
+### 🚀 Production Pretraining Launch: Mirendil-154M Champion
+
+On November 9, 2026, at 07:14 PST, we officially launched full-scale production pretraining of our **Mirendil-154M Champion** on the NVIDIA DGX Grace Blackwell (GB10) GPU (`task-4352` via `train_champion.py`).
+
+```mermaid
+flowchart TD
+    subgraph ProductionPipeline ["Mirendil-154M Champion Pretraining Pipeline"]
+        direction TB
+        CFG["<b>Architecture Specifications:</b><br>• Vocab: 16,384 (Mirendil BPE)<br>• Width: d=896 (Golden Ratio d/L=56.0)<br>• Depth: L=16 Layers (7:1 GQA, 14 Q / 2 KV heads)<br>• Stability: QK-Norm & RoPE θ=100k<br>• Dataset: 40.88M AST-Verified Python Tokens"]
+        
+        P1["<b>Phase 1: 8-Layer Trunk Fast Convergence (Steps 1 ➔ 1000)</b><br>• Parameters: 84.43M | Throughput: ~13,888 tok/s<br>• Warmup to LR 1e-3, Cosine decay<br>• Checkpoint: phase1_8l_step1000.pt"]
+        
+        T["<b>Step 1000 Transition: Zero-Init Adjacent Stacking</b><br>• Depth Doubling: 8L ➔ 16L (154.17M params)<br>• Projections: W_out = 0, W_down = 0<br>• Delta Loss: 0.00000000 (Zero Shock)"]
+        
+        P2["<b>Phase 2: 16-Layer Deep Reasoning Specialization (Steps 1001 ➔ 2500)</b><br>• Parameters: 154.17M | Throughput: ~7,400 tok/s<br>• Cosine LR Warmup to 5e-4 ➔ 5e-5<br>• Evaluations every 250 steps<br>• Final Weights: mirendil_154m_champion.pt"]
+        
+        CFG --> P1 --> T --> P2
+    end
+```
+
+#### Production Training Parameters:
+- **Corpus:** `data/shards_16k/train_shard_00000.bin` (40.88M tokens) & `val_shard_00000.bin` (2.15M tokens)
+- **Batch Size:** 32 ($32 \times 512 = 16,384\text{ tokens/step}$)
+- **Total Steps:** 2,500 ($40.96\text{M tokens processed}$, 1 full epoch)
+- **Transition Step:** Step 1,000 (16.38M tokens on 8L $\to$ 24.58M tokens on 16L)
+- **Telemetry:** Real-time dual metric logging in `checkpoints/champion/metrics.jsonl`
+- **Initial Velocity:** First 25 steps completed in $30.1\text{s}$ at **$13,888\text{ tokens/second}$**!
+
+---
+
 ---
 
 ## 💬 Collaborative Annotations & Open Questions

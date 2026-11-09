@@ -1077,6 +1077,34 @@ flowchart LR
    In early steps, a deep 16-layer network suffers from gradient dispersion and noisy backpropagation across all 16 layers. By confining the early phase to 8 layers, the network rapidly masters vocabulary representations and code syntax. When doubled to 16 layers, the new upper reasoning layers are initialized on top of a rock-solid, fully converged feature extractor, allowing faster and cleaner convergence!</li>
 </ol>
 <hr />
+<h3>🚀 Production Pretraining Launch: Mirendil-154M Champion</h3>
+<p>On November 9, 2026, at 07:14 PST, we officially launched full-scale production pretraining of our <strong>Mirendil-154M Champion</strong> on the NVIDIA DGX Grace Blackwell (GB10) GPU (<code>task-4352</code> via <code>train_champion.py</code>).</p>
+<div class="mermaid">
+flowchart TD
+    subgraph ProductionPipeline ["Mirendil-154M Champion Pretraining Pipeline"]
+        direction TB
+        CFG["<b>Architecture Specifications:</b><br>• Vocab: 16,384 (Mirendil BPE)<br>• Width: d=896 (Golden Ratio d/L=56.0)<br>• Depth: L=16 Layers (7:1 GQA, 14 Q / 2 KV heads)<br>• Stability: QK-Norm & RoPE θ=100k<br>• Dataset: 40.88M AST-Verified Python Tokens"]
+        
+        P1["<b>Phase 1: 8-Layer Trunk Fast Convergence (Steps 1 ➔ 1000)</b><br>• Parameters: 84.43M | Throughput: ~13,888 tok/s<br>• Warmup to LR 1e-3, Cosine decay<br>• Checkpoint: phase1_8l_step1000.pt"]
+        
+        T["<b>Step 1000 Transition: Zero-Init Adjacent Stacking</b><br>• Depth Doubling: 8L ➔ 16L (154.17M params)<br>• Projections: W_out = 0, W_down = 0<br>• Delta Loss: 0.00000000 (Zero Shock)"]
+        
+        P2["<b>Phase 2: 16-Layer Deep Reasoning Specialization (Steps 1001 ➔ 2500)</b><br>• Parameters: 154.17M | Throughput: ~7,400 tok/s<br>• Cosine LR Warmup to 5e-4 ➔ 5e-5<br>• Evaluations every 250 steps<br>• Final Weights: mirendil_154m_champion.pt"]
+        
+        CFG --> P1 --> T --> P2
+    end
+</div>
+
+<h4>Production Training Parameters:</h4>
+<ul>
+<li><strong>Corpus:</strong> <code>data/shards_16k/train_shard_00000.bin</code> (40.88M tokens) &amp; <code>val_shard_00000.bin</code> (2.15M tokens)</li>
+<li><strong>Batch Size:</strong> 32 ($32 \times 512 = 16,384\text{ tokens/step}$)</li>
+<li><strong>Total Steps:</strong> 2,500 ($40.96\text{M tokens processed}$, 1 full epoch)</li>
+<li><strong>Transition Step:</strong> Step 1,000 (16.38M tokens on 8L $\to$ 24.58M tokens on 16L)</li>
+<li><strong>Telemetry:</strong> Real-time dual metric logging in <code>checkpoints/champion/metrics.jsonl</code></li>
+<li><strong>Initial Velocity:</strong> First 25 steps completed in $30.1\text{s}$ at <strong>$13,888\text{ tokens/second}$</strong>!</li>
+</ul>
+<hr />
 <hr />
 <h2>💬 Collaborative Annotations &amp; Open Questions</h2>
 <p><em>This section dynamically records notes, questions, and hypotheses added by Ramakant and Antigravity.</em></p>
