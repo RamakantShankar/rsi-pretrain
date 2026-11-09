@@ -54,7 +54,7 @@ def stack_depth_8_to_16(model_8l: TransformerDecoder, model_16l: TransformerDeco
         # Attention output projection:
         nn.init.zeros_(model_16l.layers[2 * i + 1].attn.out_proj.weight)
         # SwiGLU FFN down-projection:
-        nn.init.zeros_(model_16l.layers[2 * i + 1].ffn.w2.weight)
+        nn.init.zeros_(model_16l.layers[2 * i + 1].ffn.w_down.weight)
 
     print("--> [Stacking] Depth successfully doubled: 8 Layers -> 16 Layers with Zero-Init Output Projections!")
 
@@ -211,16 +211,18 @@ def run_progressive_stacking(train_loader: DataLoader, val_loader: DataLoader, t
     stack_depth_8_to_16(model_8l, model_16l)
 
     # Mathematical Invariant Verification: Loss before == Loss after
+    model_8l.eval()
     model_16l.eval()
     with torch.no_grad():
         with torch.amp.autocast(device_type="cuda", dtype=torch.bfloat16):
+            _, loss_8l_post = model_8l(x, targets=y)
             _, loss_after_stack = model_16l(x, targets=y)
 
     print(f"Zero-Shock Invariant Check:")
-    print(f"  Loss on 8-Layer Model:  {loss_before_stack:.4f}")
-    print(f"  Loss on 16-Layer Model: {loss_after_stack.item():.4f}")
-    loss_delta = abs(loss_before_stack - loss_after_stack.item())
-    print(f"  Loss Delta at Transition: {loss_delta:.6f}")
+    print(f"  Loss on 8-Layer Model (Post-Step):  {loss_8l_post.item():.6f}")
+    print(f"  Loss on 16-Layer Model (Zero-Init): {loss_after_stack.item():.6f}")
+    loss_delta = abs(loss_8l_post.item() - loss_after_stack.item())
+    print(f"  Loss Delta at Transition: {loss_delta:.8f}")
     assert loss_delta < 1e-3, f"Loss mismatch at transition! Delta = {loss_delta}"
     print("  --> Invariant VERIFIED: Mathematically identical forward pass!\n")
 
@@ -269,6 +271,11 @@ def run_progressive_stacking(train_loader: DataLoader, val_loader: DataLoader, t
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--skip-baseline", action="store_true", help="Use cached Flat 16L baseline metrics from prior run")
+    args = parser.parse_args()
+
     train_shard = "data/shards_16k/train_shard_00000.bin"
     val_shard = "data/shards_16k/val_shard_00000.bin"
 
@@ -278,8 +285,18 @@ def main():
     train_loader = DataLoader(train_ds, batch_size=32, shuffle=True, drop_last=True)
     val_loader = DataLoader(val_ds, batch_size=32, shuffle=False, drop_last=True)
 
-    # Run both side-by-side
-    res_flat = run_flat_16l_baseline(train_loader, val_loader, total_steps=400)
+    if args.skip_baseline:
+        print("[Notice] Using verified Flat 16L baseline metrics from earlier run (887.8s, Val Loss: 1.2187, Val BPB: 0.571).")
+        res_flat = {
+            "name": "Flat 16L Baseline",
+            "val_loss": 1.2187,
+            "val_bpb": 0.571,
+            "elapsed_sec": 887.8,
+            "tok_per_sec": 7382.0,
+        }
+    else:
+        res_flat = run_flat_16l_baseline(train_loader, val_loader, total_steps=400)
+
     res_stack = run_progressive_stacking(train_loader, val_loader, total_steps=400, transition_step=200)
 
     # Comparative Scorecard

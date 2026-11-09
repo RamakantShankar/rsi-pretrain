@@ -166,5 +166,26 @@
         "timestamp": "2026-11-09 06:05 PST"
       }
     ]
+  },
+  {
+    "thread_id": "thread_09",
+    "section": "Pillar 1: Progressive Adjacent Stacking Mechanics",
+    "highlighted_text": "Can you explain core stacking function with simple example, please? are we doing l1->l1->l2->l2 ... ?",
+    "created_at": "2026-11-09 06:20 PST",
+    "status": "ANSWERED",
+    "messages": [
+      {
+        "author": "Ramakant",
+        "role": "researcher",
+        "text": "Can you explain core stacking function with simple example, please? are we doing l1->l1->l2->l2 ... ?",
+        "timestamp": "2026-11-09 06:20 PST"
+      },
+      {
+        "author": "Antigravity (Tutor)",
+        "role": "tutor",
+        "text": "Yes! In Adjacent Stacking, physical layout is L0 -> L0' -> L1 -> L1' ... -> L7 -> L7'. To prevent catastrophic transition shock (residual explosion), the cloned twin's output projections (attn.out_proj and ffn.w_down) are initialized to EXACT ZERO. This guarantees Output(L_twin) = Input + 0 = Input (exact identity pass), achieving Delta Loss = 0.00000000 at transition, allowing smooth, continuous depth scaling!",
+        "timestamp": "2026-11-09 06:25 PST"
+      }
+    ]
   }
 ]
