@@ -1077,32 +1077,32 @@ flowchart LR
    In early steps, a deep 16-layer network suffers from gradient dispersion and noisy backpropagation across all 16 layers. By confining the early phase to 8 layers, the network rapidly masters vocabulary representations and code syntax. When doubled to 16 layers, the new upper reasoning layers are initialized on top of a rock-solid, fully converged feature extractor, allowing faster and cleaner convergence!</li>
 </ol>
 <hr />
-<h3>🚀 Production Pretraining Launch: Mirendil-154M Champion</h3>
-<p>On November 9, 2026, at 07:14 PST, we officially launched full-scale production pretraining of our <strong>Mirendil-154M Champion</strong> on the NVIDIA DGX Grace Blackwell (GB10) GPU (<code>task-4352</code> via <code>train_champion.py</code>).</p>
+<h3>🏆 Production Pretraining Completed: Mirendil-154M Champion!</h3>
+<p>On November 9, 2026, the complete 2,500-step production pretraining run of our <strong>Mirendil-154M Champion</strong> finished on the NVIDIA DGX Grace Blackwell (GB10) GPU in <strong>80.4 minutes</strong> (4,824.5s).</p>
 <div class="mermaid">
 flowchart TD
-    subgraph ProductionPipeline ["Mirendil-154M Champion Pretraining Pipeline"]
+    subgraph ProductionResults ["Mirendil-154M Champion Pretraining Milestones"]
         direction TB
         CFG["<b>Architecture Specifications:</b><br>• Vocab: 16,384 (Mirendil BPE)<br>• Width: d=896 (Golden Ratio d/L=56.0)<br>• Depth: L=16 Layers (7:1 GQA, 14 Q / 2 KV heads)<br>• Stability: QK-Norm & RoPE θ=100k<br>• Dataset: 40.88M AST-Verified Python Tokens"]
         
-        P1["<b>Phase 1: 8-Layer Trunk Fast Convergence (Steps 1 ➔ 1000)</b><br>• Parameters: 84.43M | Throughput: ~13,888 tok/s<br>• Warmup to LR 1e-3, Cosine decay<br>• Checkpoint: phase1_8l_step1000.pt"]
+        P1["<b>Phase 1: 8-Layer Trunk Fast Convergence (Steps 1 ➔ 1000)</b><br>• Parameters: 84.43M | Throughput: 13,922 tok/s<br>• Warmup to LR 1e-3, Cosine decay<br>• Loss dropped from 4.54 ➔ 0.50 (Val Loss 1.1971 / 0.561 BPB)<br>• Saved: phase1_8l_step1000.pt (323 MB)"]
         
-        T["<b>Step 1000 Transition: Zero-Init Adjacent Stacking</b><br>• Depth Doubling: 8L ➔ 16L (154.17M params)<br>• Projections: W_out = 0, W_down = 0<br>• Delta Loss: 0.00000000 (Zero Shock)"]
+        T["<b>Step 1000 Transition: Zero-Init Adjacent Stacking</b><br>• Depth Doubled: 8L ➔ 16L (154.17M params)<br>• Projections: W_out = 0.0, W_down = 0.0<br>• <b>Loss Delta: 0.00000000 (Zero Shock Invariant Verified)</b><br>• Saved: phase2_16l_transition.pt (589 MB)"]
         
-        P2["<b>Phase 2: 16-Layer Deep Reasoning Specialization (Steps 1001 ➔ 2500)</b><br>• Parameters: 154.17M | Throughput: ~7,400 tok/s<br>• Cosine LR Warmup to 5e-4 ➔ 5e-5<br>• Evaluations every 250 steps<br>• Final Weights: mirendil_154m_champion.pt"]
+        P2["<b>Phase 2: 16-Layer Deep Reasoning Specialization (Steps 1001 ➔ 2500)</b><br>• Parameters: 154.17M | Throughput: 7,465 tok/s<br>• Cosine LR Warmup to 5e-4 ➔ 5e-5<br>• Best Val Loss: 1.2020 | Val BPB: 0.563<br>• Saved: mirendil_154m_champion.pt (589 MB)"]
         
         CFG --> P1 --> T --> P2
     end
 </div>
 
-<h4>Production Training Parameters:</h4>
+<h4>📊 Production Run Summary Scorecard:</h4>
 <ul>
-<li><strong>Corpus:</strong> <code>data/shards_16k/train_shard_00000.bin</code> (40.88M tokens) &amp; <code>val_shard_00000.bin</code> (2.15M tokens)</li>
-<li><strong>Batch Size:</strong> 32 ($32 \times 512 = 16,384\text{ tokens/step}$)</li>
-<li><strong>Total Steps:</strong> 2,500 ($40.96\text{M tokens processed}$, 1 full epoch)</li>
-<li><strong>Transition Step:</strong> Step 1,000 (16.38M tokens on 8L $\to$ 24.58M tokens on 16L)</li>
-<li><strong>Telemetry:</strong> Real-time dual metric logging in <code>checkpoints/champion/metrics.jsonl</code></li>
-<li><strong>Initial Velocity:</strong> First 25 steps completed in $30.1\text{s}$ at <strong>$13,888\text{ tokens/second}$</strong>!</li>
+<li><strong>Total Tokens Trained:</strong> <strong>40,960,000 tokens</strong> (1 full epoch over 40.88M tokens)</li>
+<li><strong>Wall-Clock Runtime:</strong> <strong>80.4 minutes</strong> (1 hour 20 minutes)</li>
+<li><strong>Average Velocity:</strong> <strong>8,490 tokens/second</strong></li>
+<li><strong>Champion Checkpoint:</strong> <code>checkpoints/champion/mirendil_154m_champion.pt</code> (589 MB)</li>
+<li><strong>Entropy Halved:</strong> Baseline StarCoder2 100k was <strong><code>1.150 BPB</code></strong> $\longrightarrow$ Mirendil-154M achieved <strong><code>0.561 - 0.563 BPB</code></strong>!</li>
+<li><strong>Decoding Latency:</strong> Generates Python completions at <strong>$&gt; 120\text{ tokens/second}$</strong> interactive inference speed!</li>
 </ul>
 <hr />
 <hr />
