@@ -1684,5 +1684,26 @@
         "timestamp": "2026-11-14 06:32 PST"
       }
     ]
+  },
+  {
+    "thread_id": "thread_82",
+    "section": "Pillar 7: CodeAct Agentic Tool Execution & Closed-Loop Python REPL",
+    "highlighted_text": "How does Rama-84M execute actions via CodeAct, and how does live REPL feedback eliminate mathematical hallucination?",
+    "created_at": "2026-11-14 06:45 PST",
+    "status": "ANSWERED",
+    "messages": [
+      {
+        "author": "Ramakant",
+        "role": "researcher",
+        "text": "How does Rama-84M execute actions via CodeAct, and how does live REPL feedback eliminate mathematical hallucination?",
+        "timestamp": "2026-11-14 06:45 PST"
+      },
+      {
+        "author": "Antigravity (Tutor)",
+        "role": "tutor",
+        "text": "Small models (84M) lack the parametric capacity to memorize large multiplication tables or combinatorial counts, leading to hallucination when forced to generate answers directly. The CodeAct paradigm solves this via a closed-loop 4-stage execution cycle: 1) Action Generation Phase (model emits intent and Python snippet), 2) Sandboxed Execution Phase (isolated Python REPL subprocess executes code and captures stdout/stderr), 3) Observation Injection (harness appends `<|tool_output|>\\n{observation}\\n` to context), and 4) Final Answer Synthesis (model conditions on live execution outputs to state the verified answer). Crucially, during Stage 2 pretraining, all `<|tool_output|>` tokens were masked with -100, training the model to treat tool returns as ground truth rather than hallucinating them. Live validation on 'What is 347 * 829 - 1420?' generated `result = 347 * 829 - 1420; print(result)`, captured `286243` from REPL, and synthesized 'The result of 347 * 829 - 1420 is 286,243.' Deployed in `src/agent/codeact.py` and publication tutorial `notebooks/18_codeact_agentic_tool_use.ipynb`.",
+        "timestamp": "2026-11-14 06:48 PST"
+      }
+    ]
   }
 ]

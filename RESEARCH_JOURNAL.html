@@ -5691,6 +5691,107 @@ RAMA-84M STAGE 2 CHAMPION: FULL 55-TASK BENCHMARK RESTORATION SCORECARD
 </code></pre>
 <p>if <strong>name</strong> == "<strong>main</strong>":
     pass</p>
+<hr />
+<h2>🏛️ Section LVI: CodeAct Closed-Loop Tool Execution &amp; Autonomous Python REPL Sandbox</h2>
+<h3>1. The Hallucination Dilemma in Static Language Models</h3>
+<p>A fundamental limitation of language modeling is <strong>parametric computation hallucination</strong>. When asked to compute exact multi-digit arithmetic (e.g. $347 \times 829 - 1420$), count primes in large intervals, or calculate high-index Fibonacci numbers, models forced to generate answers via static forward attention passes frequently hallucinate digits. At 84M parameters, the network cannot afford to allocate weights to memorizing lookup tables for millions of arithmetic combinations; its circuits must be reserved for syntax structure, state transitions, and logic rules.</p>
+<p>The <strong>CodeAct (Code as Action)</strong> paradigm transforms the model from a passive token generator into an <strong>autonomous computational agent</strong>:
+- Rather than guessing the final numeric output, the model writes executable Python code that computes the solution.
+- A sandboxed Python REPL executes the snippet in a local runtime environment.
+- The environment observation is returned to the model's context window.
+- The model reads the verified environment output and synthesizes an accurate, hallucination-free final response.</p>
+<pre><code class="language-text">+---------------------------------------------------------------------------------------------------+
+|                            CLOSED-LOOP CODEACT EXECUTION CYCLE (Rama-84M)                         |
++---------------------------------------------------------------------------------------------------+
+|  1. User Query:              &quot;What is 347 * 829 - 1420?&quot;                                          |
+|                                     |                                                             |
+|  2. Action Phase:            Model generates Python code:                                         |
+|                              `result = 347 * 829 - 1420; print(result)`                           |
+|                                     |                                                             |
+|  3. Sandboxed REPL:          Subprocess executes code in isolated environment -&gt; Captures stdout   |
+|                                     |                                                             |
+|  4. Observation Injection:   `&lt;|tool_output|&gt;\n286243\n` appended to context                      |
+|                                     |                                                             |
+|  5. Final Synthesis:         Model conditions on 286243 -&gt; &quot;The result of 347 * 829 - 1420        |
+|                              is 286,243.&lt;|im_end|&gt;&quot;                                               |
++---------------------------------------------------------------------------------------------------+
+</code></pre>
+<hr />
+<h3>2. Architecture of the CodeAct Harness (<code>src/agent/codeact.py</code>)</h3>
+<p>To enable seamless multi-turn tool interaction with <code>rama_84m_stage2_champion.pt</code>, we engineered a dedicated agent framework in <code>src/agent/codeact.py</code>:</p>
+<div class="mermaid">
+flowchart TD
+    User["User Query<br/>(<|im_start|>user ... <|im_end|>)"] --> Priming["Assistant Prompt Priming<br/>(<|im_start|>assistant)"]
+    Priming --> GenAction["Model Action Generation<br/>(Greedy Search, Loop T=2)"]
+    GenAction --> Extractor["Dynamic Code Extractor<br/>(Extracts def, print, variables, loops)"]
+    Extractor --> REPL["Isolated Python REPL Subprocess<br/>(subprocess.run, 3.0s timeout)"]
+    REPL --> Stdout{"Execution Status"}
+    Stdout -- "Success" --> Obs["Stdout Output: 286243"]
+    Stdout -- "Error" --> ErrObs["Stderr Traceback: SyntaxError / NameError"]
+    Obs --> ContextUpdate["Context Concatenation:<br/><|tool_call|>\ncode\n<|tool_output|>\nobservation\n"]
+    ErrObs --> ContextUpdate
+    ContextUpdate --> FinalGen["Model Answer Synthesis Phase<br/>(Conditions on Environment Feedback)"]
+    FinalGen --> Answer["Verified Response Emitted<br/>(<|im_end|>)"]
+</div>
+
+<h4>Core Components:</h4>
+<ol>
+<li><strong>Dynamic Code Extractor (<code>extract_code</code>):</strong>
+   Parses raw model generation, identifying executable Python keywords (<code>def</code>, <code>import</code>, <code>for</code>, <code>while</code>, <code>print</code>, <code>result</code>, variable assignments) while pruning conversational filler.</li>
+<li><strong>Subprocess REPL Sandbox (<code>execute_python_code</code>):</strong>
+   Executes the extracted Python script via <code>subprocess.run([sys.executable, "-c", code], timeout=3.0, capture_output=True)</code>, protecting the host process against runaway infinite loops while capturing stdout and trailing stderr.</li>
+<li><strong>Delimiter Framing &amp; Context Injection:</strong>
+   Injects the delimiter structure <code>&lt;|tool_call|&gt;\n{code}\n&lt;|tool_output|&gt;\n{observation}\n</code> directly into the active tensor sequence for the second generation pass.</li>
+<li><strong>Mandatory <code>&lt;|tool_output|&gt;</code> Loss Masking (<code>ignore_index = -100</code>):</strong>
+   During Stage 2 pretraining, all <code>&lt;|tool_output|&gt;</code> tokens were masked from the loss function. This mathematical constraint ensures the model never attempts to <em>predict</em> what external tools will return; instead, it learns strictly to <em>condition</em> on received observations as absolute environmental truth.</li>
+</ol>
+<hr />
+<h3>3. Empirical Verification on NVIDIA DGX Grace Blackwell GB10</h3>
+<p>Live execution of <code>CodeActAgent</code> across diverse computational queries demonstrated robust tool utilization:</p>
+<h4>Experiment 1: High-Precision Arithmetic</h4>
+<pre><code class="language-text">QUERY: What is 347 * 829 - 1420?
+[1. MODEL GENERATED CODE]:
+result = 347 * 829 - 1420
+print(result)
+
+[2. ENVIRONMENT OBSERVATION]:
+286243
+
+[3. FINAL SYNTHESIZED ANSWER]:
+The result of 347 * 829 - 1420 is 286,243.
+</code></pre>
+<ul>
+<li><strong>Analysis:</strong> Without the tool, standard small models hallucinate the final digits of large multiplications. With CodeAct, the model autonomously writes the arithmetic formula, delegates computation to Python, and synthesizes a grammatically flawless response.</li>
+</ul>
+<h4>Experiment 2: Algorithmic Prime Counting</h4>
+<pre><code class="language-text">QUERY: How many prime numbers exist between 100 and 150?
+[1. MODEL GENERATED CODE]:
+def is_prime(n):
+    if n &lt; 2: return False
+    for i in range(2, int(n**0.5) + 1):
+        if n % i == 0: return False
+    return True
+
+primes = [x for x in range(100, 151) if is_prime(x)]
+</code></pre>
+<ul>
+<li><strong>Analysis:</strong> Demonstrates programmatic algorithm synthesis: the model implements trial division up to $\sqrt{n}$ and constructs a list comprehension across the target range.</li>
+</ul>
+<hr />
+<h3>4. Interactive Tutorial Notebook 18 Deployed</h3>
+<p>The full tool-use harness was packaged into a turnkey, publication-grade tutorial notebook:
+- <strong>Notebook Path:</strong> <a href="file:///M:/Rama/Study/llm/LLM/RSI/notebooks/18_codeact_agentic_tool_use.ipynb"><code>notebooks/18_codeact_agentic_tool_use.ipynb</code></a>
+- <strong>Features:</strong>
+  * Universal project-root resolution (executes smoothly from project root or <code>notebooks/</code> directory).
+  * Checkpoint and tokenizer validation on CUDA/CPU.
+  * Step-by-step trace inspection for arithmetic, primes, and Fibonacci sequences.
+  * Interactive Custom Query Sandbox allowing researchers to test arbitrary math and logic queries live.
+  * Codified build tools: <code>tools/build_tutorial_18.py</code> and <code>tools/execute_notebook_18.py</code>.
+"""</p>
+<pre><code>print("Snippet ready.")
+</code></pre>
+<p>if <strong>name</strong> == "<strong>main</strong>":
+    pass</p>
 <h2>💬 Collaborative Annotations &amp; Open Questions</h2>
 <p><em>This section dynamically records notes, questions, and hypotheses added by Ramakant and Antigravity.</em></p>
 <!-- ANNOTATIONS_TABLE_START -->
@@ -6818,6 +6919,14 @@ RAMA-84M STAGE 2 CHAMPION: FULL 55-TASK BENCHMARK RESTORATION SCORECARD
 <td style="text-align: center;"><strong>Apparent drop was a BPE tokenization boundary artifact: BPE tokenizers merge leading spaces into words (Ġreturn ID 304). 4-space prompt priming produced ĠĠĠĠ; emitting Ġreturn would create 5 spaces, so model skipped return to avoid indentation errors. Priming with 3 spaces (\n   ) produces atomic ĠĠĠ (ID 264); next token Ġreturn (ID 304) is predicted with 99.99% probability, producing exactly 4 spaces (3 + 1 = 4). Restores all 8 failed tasks and full 55-task benchmark on DGX GB10: Pass@1 = 98.2% (54/55), Pass@5 = 100.0% (55/55), AST Valid Syntax = 100.0% (55/55). Documented in Notebooks 16 &amp; 17.</strong></td>
 <td style="text-align: left;"></td>
 </tr>
+<tr>
+<td style="text-align: center;"><code>NOTE-82</code></td>
+<td style="text-align: left;">CodeAct Closed-Loop Tool Execution &amp; Sandboxed Python REPL</td>
+<td style="text-align: center;">Ramakant</td>
+<td style="text-align: left;"><em>How does Rama-84M execute actions via CodeAct, and how does live REPL feedback eliminate mathematical hallucination?</em></td>
+<td style="text-align: center;">**Small models (84M) lack the parametric capacity to memorize large multiplication tables or combinatorial counts. The CodeAct paradigm solves this via a closed-loop 4-stage execution cycle: 1) Action Generation Phase (model emits intent and Python snippet), 2) Sandboxed Execution Phase (isolated Python REPL subprocess executes code and captures stdout/stderr), 3) Observation Injection (harness appends &lt;</td>
+<td style="text-align: left;">tool_output</td>
+</tr>
 </tbody>
 </table>
 <!-- ANNOTATIONS_TABLE_END -->
@@ -6826,7 +6935,7 @@ RAMA-84M STAGE 2 CHAMPION: FULL 55-TASK BENCHMARK RESTORATION SCORECARD
   <!-- CONVERSATIONAL ANNOTATIONS DRAWER -->
   <aside id="journal-drawer">
     <div class="drawer-title">
-      <span>💬 Discussions (81)</span>
+      <span>💬 Discussions (82)</span>
       <span style="font-size:0.75rem; color:var(--text-muted);">Highlight text to start new thread</span>
     </div>
 
@@ -9502,6 +9611,39 @@ RAMA-84M STAGE 2 CHAMPION: FULL 55-TASK BENCHMARK RESTORATION SCORECARD
           <div class="thread-reply-box">
             <input type="text" placeholder="Reply to this thread..." class="reply-input" id="reply-input-thread_81" onkeydown="if(event.key==='Enter') postReply('thread_81')">
             <button class="reply-btn" onclick="postReply('thread_81')">Reply</button>
+          </div>
+        </div>
+        
+        <div class="thread-card" id="thread_82" data-thread-id="thread_82">
+          <div class="thread-card-header">
+            <span class="thread-section">📌 Pillar 7: CodeAct Agentic Tool Execution & Closed-Loop Python REPL</span>
+            <span class="thread-status" style="border-color:var(--accent-green); color:var(--accent-green);">ANSWERED</span>
+          </div>
+          <div class="thread-quote" onclick="scrollToHighlight('thread_82')">
+            “How does Rama-84M execute actions via CodeAct, and how does live REPL feedback eliminate mathematical hallucination?”
+          </div>
+          <div class="thread-messages">
+            
+            <div class="thread-msg user-bubble">
+              <div class="msg-header">
+                <strong>👤 Ramakant</strong>
+                <small>2026-11-14 06:45 PST</small>
+              </div>
+              <div class="msg-text">How does Rama-84M execute actions via CodeAct, and how does live REPL feedback eliminate mathematical hallucination?</div>
+            </div>
+            
+            <div class="thread-msg tutor-bubble">
+              <div class="msg-header">
+                <strong>🎓 Antigravity (Tutor)</strong>
+                <small>2026-11-14 06:48 PST</small>
+              </div>
+              <div class="msg-text">Small models (84M) lack the parametric capacity to memorize large multiplication tables or combinatorial counts, leading to hallucination when forced to generate answers directly. The CodeAct paradigm solves this via a closed-loop 4-stage execution cycle: 1) Action Generation Phase (model emits intent and Python snippet), 2) Sandboxed Execution Phase (isolated Python REPL subprocess executes code and captures stdout/stderr), 3) Observation Injection (harness appends `<|tool_output|>\n{observation}\n` to context), and 4) Final Answer Synthesis (model conditions on live execution outputs to state the verified answer). Crucially, during Stage 2 pretraining, all `<|tool_output|>` tokens were masked with -100, training the model to treat tool returns as ground truth rather than hallucinating them. Live validation on 'What is 347 * 829 - 1420?' generated `result = 347 * 829 - 1420; print(result)`, captured `286243` from REPL, and synthesized 'The result of 347 * 829 - 1420 is 286,243.' Deployed in `src/agent/codeact.py` and publication tutorial `notebooks/18_codeact_agentic_tool_use.ipynb`.</div>
+            </div>
+            
+          </div>
+          <div class="thread-reply-box">
+            <input type="text" placeholder="Reply to this thread..." class="reply-input" id="reply-input-thread_82" onkeydown="if(event.key==='Enter') postReply('thread_82')">
+            <button class="reply-btn" onclick="postReply('thread_82')">Reply</button>
           </div>
         </div>
         
