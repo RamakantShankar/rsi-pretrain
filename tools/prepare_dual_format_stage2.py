@@ -177,13 +177,29 @@ CODEACT_SAMPLES = [
 def build_raw_code_sample(tok: Tokenizer, prompt: str, completion: str) -> Dict[str, Any]:
     """
     Builds a native continuation code sample (the exact format that achieved 100% Pass@1).
+    Ensures completion contains ONLY the function body (stripping duplicate prompt headers).
     Prompt is masked (-100); completion and <|endoftext|> are trained.
     """
     eos_id = tok.token_to_id("<|endoftext|>")
     
+    # Strip prompt header from completion if present
+    p_strip = prompt.strip()
+    c_strip = completion.strip()
+    if c_strip.startswith(p_strip):
+        body = c_strip[len(p_strip):].lstrip()
+    elif "\n" in p_strip and c_strip.startswith(p_strip.splitlines()[0].strip()):
+        lines = completion.splitlines()
+        p_lines = prompt.splitlines()
+        if len(lines) > len(p_lines):
+            body = "\n".join(lines[len(p_lines):]).lstrip()
+        else:
+            body = c_strip
+    else:
+        body = c_strip
+
     # Clean indentation prefix
     primed_prompt = prompt.rstrip() + "\n    "
-    full_text = primed_prompt + completion.lstrip() + "<|endoftext|>"
+    full_text = primed_prompt + body.lstrip() + "<|endoftext|>"
     
     prompt_ids = tok.encode(primed_prompt).ids
     full_ids = tok.encode(full_text).ids
@@ -287,16 +303,18 @@ def main():
             for p in pb:
                 code_candidates.append((p["prompt"], p["canonical"]))
 
-    # Also check if verified solutions exist locally
-    v_path = "data/rsi/verified_solutions.jsonl"
-    if os.path.exists(v_path):
-        with open(v_path, "r", encoding="utf-8") as f:
-            for line in f:
-                d = json.loads(line)
-                p = d.get("prompt", "")
-                c = d.get("completion", d.get("solution", ""))
-                if p and c:
-                    code_candidates.append((p, c))
+    # Also check other verified solutions files
+    for v_path in ["data/rsi/verified_solutions_reflexion_cycle32.jsonl", "data/rsi/verified_solutions_50m.jsonl", "data/rsi/verified_solutions.jsonl"]:
+        if os.path.exists(v_path):
+            print(f"[*] Sourcing verified solutions from: {v_path}")
+            with open(v_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.strip():
+                        d = json.loads(line)
+                        p = d.get("prompt", "")
+                        c = d.get("completion", d.get("solution", ""))
+                        if p and c:
+                            code_candidates.append((p, c))
 
     random.seed(42)
     for _ in range(n_code):
