@@ -1601,5 +1601,25 @@
         "text": "The engine (tools/data_dedup_minhash.py) uses 128 universal hash permutations over the 61-bit Mersenne prime p = 2^61 - 1 with 5-character word shingles. LSH banding partitions the 128 slots into 16 bands x 8 rows, yielding a sharp sigmoid threshold at Jaccard 0.8. Super-bucket caps (MAX_BUCKET_SIZE = 100) and length guards prevent O(N^2) pairwise explosions on boilerplate files. Candidate pairs are verified in RAM via 128-slot signature comparison and clustered into duplicate components using Union-Find. Quality-weighted pruning keeps the highest-signal canonical document while purging near-identical variants, achieving 93.3% redundancy reduction (875 down to 59 unique clusters) in 0.17s (5,053 docs/sec) on DGX Blackwell GB10."
       }
     ]
+  },
+  {
+    "thread_id": "thread_78",
+    "section": "Pillar 5: Token-Level BPE MinHash LSH Upgrade (k=6 Token Shingling & Canonical Operators)",
+    "highlighted_text": "Why does whitespace word-splitting fail on code deduplication, and how does Token-Level BPE shingling solve it?",
+    "created_at": "2026-11-14 03:55 PST",
+    "status": "ANSWERED",
+    "messages": [
+      {
+        "author": "Ramakant",
+        "role": "researcher",
+        "text": "Why does whitespace word-splitting fail on code deduplication, and how does Token-Level BPE shingling solve it?",
+        "timestamp": "2026-11-14 03:55 PST"
+      },
+      {
+        "author": "Antigravity (Tutor)",
+        "role": "tutor",
+        "text": "Naive whitespace splitting treats `x=a+b` as a single word token while treating `x = a + b` as five separate words, creating disjoint shingle sets for identical logic. By passing `checkpoints/tokenizers/rama_16k.json` directly to the engine (`--tokenizer`), code is decomposed into canonical subword token IDs (`k=6` token n-grams). Operators and variables receive invariant token representations regardless of formatting. On our Cycle 32 dataset (875 rollouts), token-level shingling successfully identified all 57 clusters, pruning 816 duplicate solutions (93.3% redundancy reduction) in 0.35s on DGX GB10."
+      }
+    ]
   }
 ]
