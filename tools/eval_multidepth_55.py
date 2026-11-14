@@ -27,9 +27,16 @@ from generate import top_p_sampling
 
 
 def format_prompt(raw_prompt: str) -> str:
-    """Ensures prompt ends with 4-space indentation to prime function body."""
+    """
+    BPE Subword Indentation Alignment:
+    In BPE tokenizers, keywords and identifiers contain an embedded leading space
+    (e.g. 'Ġreturn', 'Ġif', 'Ġwhile', 'Ġstack').
+    Priming with 3 spaces ('\\n   ') produces the atomic token 'ĠĠĠ' (ID 264).
+    Combining 'ĠĠĠ' with the leading space of the next token creates exactly 4 spaces
+    of canonical indentation with zero BPE boundary collisions.
+    """
     p = raw_prompt.rstrip()
-    return p + "\n    "
+    return p + "\n   "
 
 
 def evaluate_multidepth_55(
@@ -155,15 +162,14 @@ def evaluate_multidepth_55(
             body = tok.decode(gen_ids)
             for token_str in ["<|im_end|>", "<|endoftext|>", "<|im_start|>"]:
                 body = body.replace(token_str, "")
-            stripped_body = body.lstrip()
-
             if chatml_mode:
+                stripped_body = body.lstrip()
                 if stripped_body.startswith("def ") or stripped_body.startswith("class "):
                     full_raw = stripped_body
                 else:
-                    full_raw = raw_prompt.rstrip() + "\n    " + stripped_body
+                    full_raw = raw_prompt.rstrip() + "\n   " + body
             else:
-                full_raw = raw_prompt.rstrip() + "\n    " + stripped_body
+                full_raw = raw_prompt.rstrip() + "\n   " + body
 
             cleaned_code = extract_function_block(full_raw)
             total_candidates_generated += 1
@@ -227,6 +233,16 @@ def evaluate_multidepth_55(
         wandb.summary[f"pass_at_{num_candidates}"] = p5_pct
         wandb.summary["syntax_valid_pct"] = syntax_pct
         wandb.finish()
+
+    return {
+        "pass@1_accuracy": passed_at_1_count / total_tasks,
+        "pass@5_accuracy": passed_at_5_count / total_tasks,
+        "syntax_rate": valid_syntax_count / total_tasks,
+        "passed_at_1_count": passed_at_1_count,
+        "passed_at_5_count": passed_at_5_count,
+        "total_tasks": total_tasks,
+        "eval_time_sec": total_eval_time,
+    }
 
 
 if __name__ == "__main__":
