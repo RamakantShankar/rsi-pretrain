@@ -45,6 +45,7 @@ def evaluate_multidepth_55(
     use_wandb: bool = False,
     wandb_project: str = "rsi-coding-pretrain",
     wandb_name: str = "eval_multidepth_55",
+    chatml_mode: bool = False,
 ):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"\n{'='*75}")
@@ -59,6 +60,10 @@ def evaluate_multidepth_55(
     # 1. Load Tokenizer
     tok = Tokenizer.from_file(tokenizer_path)
     eot_id = tok.token_to_id("<|endoftext|>")
+    im_end_id = tok.token_to_id("<|im_end|>")
+    stop_ids = {eot_id}
+    if im_end_id is not None:
+        stop_ids.add(im_end_id)
     vocab_size = tok.get_vocab_size()
 
     # 2. Load Model Architecture
@@ -123,7 +128,10 @@ def evaluate_multidepth_55(
         category = prob.get("category", "General")
         raw_prompt = prob["prompt"]
         unit_tests = prob.get("tests", prob.get("unit_tests", []))
-        primed_prompt = format_prompt(raw_prompt)
+        if chatml_mode:
+            primed_prompt = f"<|im_start|>user\n{raw_prompt.strip()}<|im_end|>\n<|im_start|>assistant\n"
+        else:
+            primed_prompt = format_prompt(raw_prompt)
 
         task_passed = False
         first_passed = False
@@ -139,12 +147,14 @@ def evaluate_multidepth_55(
                     logits, _ = model(x, num_loops=num_loops)
                     next_tok = top_p_sampling(logits[:, -1, :], temperature=temperature, top_p=top_p)
                     tok_id = next_tok.item()
-                    if tok_id == eot_id and step >= 4:
+                    if tok_id in stop_ids and step >= 2:
                         break
                     gen_ids.append(tok_id)
                     x = torch.cat([x, next_tok], dim=1)
 
             body = tok.decode(gen_ids)
+            for token_str in ["<|im_end|>", "<|endoftext|>", "<|im_start|>"]:
+                body = body.replace(token_str, "")
             stripped_body = body.lstrip()
             full_raw = raw_prompt.rstrip() + "\n    " + stripped_body
 
@@ -221,6 +231,7 @@ if __name__ == "__main__":
     parser.add_argument("--k", type=int, default=5)
     parser.add_argument("--wandb", action="store_true")
     parser.add_argument("--name", type=str, default="eval_multidepth_55")
+    parser.add_argument("--chatml", action="store_true", help="Evaluate with consistent <|im_start|> ChatML prompt format")
     args = parser.parse_args()
     evaluate_multidepth_55(
         checkpoint_path=args.checkpoint,
@@ -229,4 +240,6 @@ if __name__ == "__main__":
         num_candidates=args.k,
         use_wandb=args.wandb,
         wandb_name=args.name,
+        chatml_mode=args.chatml
+    ),
     )
