@@ -420,6 +420,7 @@ def main():
     files_to_compile = [
         "RESEARCH_COMPENDIUM.md",
         "EXPERIMENT_LOG.md",
+        "RESEARCH_JOURNAL.md",
     ]
 
     for fname in files_to_compile:
@@ -435,9 +436,23 @@ def main():
         if gdrive_dir.exists():
             gdrive_out = gdrive_dir / html_name
             shutil.copy2(local_out, gdrive_out)
-            print(f"Mirrored to Google Drive -> {gdrive_out}")
+            print(f"Mirrored HTML to Google Drive -> {gdrive_out}")
+            gdrive_md = gdrive_dir / fname
+            shutil.copy2(src, gdrive_md)
+            print(f"Mirrored Markdown to Google Drive -> {gdrive_md}")
+            if fname == "EXPERIMENT_LOG.md":
+                shutil.copy2(src, gdrive_dir / "EXPERIMENT_AND_ABLATION_LOG.md")
+                print(f"Mirrored EXPERIMENT_AND_ABLATION_LOG.md to Google Drive")
         else:
             print(f"Google Drive mirror directory not found: {gdrive_dir}")
+
+    # Mirror dashboard and annotations
+    if gdrive_dir.exists():
+        for extra in ["DASHBOARD.html", "annotations.json"]:
+            extra_src = root / extra
+            if extra_src.exists():
+                shutil.copy2(extra_src, gdrive_dir / extra)
+                print(f"Mirrored {extra} to Google Drive")
 
 if __name__ == "__main__":
     main()
