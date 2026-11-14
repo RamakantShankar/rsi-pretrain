@@ -241,5 +241,4 @@ if __name__ == "__main__":
         use_wandb=args.wandb,
         wandb_name=args.name,
         chatml_mode=args.chatml
-    ),
     )
