@@ -95,8 +95,9 @@ def run_probes(model: nn.Module, tokenizer: Tokenizer, device: torch.device):
         
         with torch.no_grad():
             for _ in range(128):
-                logits = model(x, num_loops=2)[:, -1, :]
-                next_id = int(torch.argmax(logits, dim=-1).item())
+                out = model(x, num_loops=2)
+                logits = out[0] if isinstance(out, tuple) else out
+                next_id = int(torch.argmax(logits[:, -1, :], dim=-1).item())
                 generated.append(next_id)
                 if next_id in (im_end_id, eos_id):
                     break
@@ -191,20 +192,19 @@ def main():
         for batch_idx, (inputs, targets) in enumerate(loader):
             inputs, targets = inputs.to(device), targets.to(device)
             
-            # Forward pass with recurrent loop compute (loops=2)
-            logits = model(inputs, num_loops=2)
-            
-            # Shift tokens for next-token prediction
-            shift_logits = logits[:, :-1, :].contiguous()
+            shift_inputs = inputs[:, :-1].contiguous()
             shift_targets = targets[:, 1:].contiguous()
+
+            # Forward pass with Multi-Depth Deep Supervision (loops=2)
+            logits, loss = model(
+                shift_inputs,
+                targets=shift_targets,
+                depth_weights=[0.3, 0.7]
+            )
             
-            loss = criterion(
-                shift_logits.view(-1, shift_logits.size(-1)),
-                shift_targets.view(-1)
-            ) / args.grad_accum
-            
-            loss.backward()
-            accum_loss += loss.item() * args.grad_accum
+            loss_scaled = loss / args.grad_accum
+            loss_scaled.backward()
+            accum_loss += loss.item()
 
             if (batch_idx + 1) % args.grad_accum == 0 or (batch_idx + 1) == len(loader):
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
