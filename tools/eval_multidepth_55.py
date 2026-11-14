@@ -156,7 +156,14 @@ def evaluate_multidepth_55(
             for token_str in ["<|im_end|>", "<|endoftext|>", "<|im_start|>"]:
                 body = body.replace(token_str, "")
             stripped_body = body.lstrip()
-            full_raw = raw_prompt.rstrip() + "\n    " + stripped_body
+
+            if chatml_mode:
+                if stripped_body.startswith("def ") or stripped_body.startswith("class "):
+                    full_raw = stripped_body
+                else:
+                    full_raw = raw_prompt.rstrip() + "\n    " + stripped_body
+            else:
+                full_raw = raw_prompt.rstrip() + "\n    " + stripped_body
 
             cleaned_code = extract_function_block(full_raw)
             total_candidates_generated += 1

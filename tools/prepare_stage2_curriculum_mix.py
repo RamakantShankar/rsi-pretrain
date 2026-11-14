@@ -148,16 +148,17 @@ CODEACT_SAMPLES = [
 
 
 def build_code_sample(tok: Tokenizer, prompt: str, completion: str) -> Dict[str, Any]:
-    """Builds a prompt-masked code sample using ChatML wrapper."""
-    im_start_id = tok.token_to_id("<|im_start|>")
-    im_end_id = tok.token_to_id("<|im_end|>")
+    """Builds a self-contained, valid complete Python function inside ChatML."""
     eos_id = tok.token_to_id("<|endoftext|>")
 
-    user_text = f"<|im_start|>user\n{prompt.strip()}<|im_end|>\n<|im_start|>assistant\n"
+    # Complete function starting at column 0 with proper indentation
+    full_function = prompt.rstrip() + "\n" + completion
+
+    user_text = f"<|im_start|>user\nWrite a Python function for the following specification:\n{prompt.strip()}<|im_end|>\n<|im_start|>assistant\n"
     user_ids = tok.encode(user_text).ids
     user_labels = [-100] * len(user_ids)
 
-    asst_text = f"{completion.strip()}<|im_end|>"
+    asst_text = f"{full_function.strip()}<|im_end|>"
     asst_ids = tok.encode(asst_text).ids
     asst_labels = list(asst_ids)
 
